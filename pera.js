@@ -4,9 +4,12 @@ const arity = {
     on: 3, if: 3,
 };
 
-const env = {};
+const env = {
+    nil: undefined,
+};
 
 const lib = {
+    "'": xs => xs,
     print: ([v]) => (v = ev(v), console.log(v), v),
     not: ([x]) => !ev(x),
     '=': ([x, y]) => ev(x) === ev(y),
@@ -70,6 +73,9 @@ print (sum 1000000 0)
 set i 3
 while < 0 i
   print dec i
+
+print nil
+(' hello world !)
 `;
 
 console.log('>', ev(parse(lex(test))));
