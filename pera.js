@@ -4,9 +4,7 @@ const arity = {
     on: 3, if: 3,
 };
 
-const env = {
-    nil: undefined,
-};
+const env = {};
 
 const lib = {
     "'": xs => xs,
@@ -40,6 +38,7 @@ function scan(tk) {
 
 function parse(tk) {
     let t = tk.shift();
+    if (t == 'nil') return;
     if (t == ')') return;
     if (t == '(') return scan(tk);
     if (t in arity)
