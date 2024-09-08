@@ -14,7 +14,7 @@ const lib = {
     '<': ([x, y]) => ev(x) < ev(y),
     '+': xs => xs.map(ev).reduce((p, c) => p + c),
     '-': xs => xs.map(ev).reduce((p, c) => p - c),
-    do: ([e]) => e.map(ev).pop(),
+    do: ([e]) => (e.slice(0, -1).map(ev), e[e.length - 1]),
     inc: ([k]) => env[k]++,
     dec: ([k]) => env[k]--,
     set: ([k, v]) => env[k] = ev(v),
