@@ -4,6 +4,24 @@ const arity = {
     on: 3, if: 3,
 };
 
+const env = {};
+
+const lib = {
+    print: ([v]) => (v = ev(v), console.log(v), v),
+    not: ([x]) => !ev(x),
+    '=': ([x, y]) => ev(x) === ev(y),
+    '<': ([x, y]) => ev(x) < ev(y),
+    '+': xs => xs.map(ev).reduce((p, c) => p + c),
+    '-': xs => xs.map(ev).reduce((p, c) => p - c),
+    do: ([e]) => e.map(ev).pop(),
+    inc: ([k]) => env[k]++,
+    dec: ([k]) => env[k]--,
+    set: ([k, v]) => env[k] = ev(v),
+    on: ([k, p, b]) => env[k] = new proc(p, b),
+    if: ([c, t, e]) => ev(c) ? t : e,
+    while: ([c, t]) => { let r; while (ev(c)) r = ev(t); return r; },
+};
+
 function lex(s) {
     const re = /[^()\s]+|\S/g;
     return ('do (' + s + ')').match(re);
@@ -26,6 +44,21 @@ function parse(tk) {
     return isNaN(t) ? t : +t;
 }
 
+class proc { constructor(arg, body) { this.arg = arg, this.body = body; } }
+
+function ev(o) {
+    while (Array.isArray(o) && o.length) {
+        let [f, ...arg] = o;
+        if (f in lib)
+            o = lib[f](arg);
+        else if ((f = ev(f)) instanceof proc) {
+            o = f.body;
+            arg.map(ev).forEach((x, i) => env[f.arg[i]] = x);
+        } else break;
+    }
+    return typeof o == 'string' ? env[o] : o;
+}
+
 let test = `
 on sum (n acc)
   if = n 0
@@ -39,4 +72,4 @@ while < 0 i
   print dec i
 `;
 
-console.log(parse(lex(test)));
+console.log('>', ev(parse(lex(test))));
