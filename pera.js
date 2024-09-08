@@ -10,7 +10,7 @@ const env = {
 
 const lib = {
     "'": xs => xs,
-    print: ([v]) => (v = ev(v), console.log(v), v),
+    print: ([v]) => (v = ev(v), console.log(print(v)), v),
     not: ([x]) => !ev(x),
     '=': ([x, y]) => ev(x) === ev(y),
     '<': ([x, y]) => ev(x) < ev(y),
@@ -62,6 +62,16 @@ function ev(o) {
     return typeof o == 'string' ? env[o] : o;
 }
 
+function print(o) {
+    if (Array.isArray(o))
+        return `( ${o.map(print).join(' ')} )`;
+    if (o instanceof proc)
+        return 'function';
+    if (typeof o === 'undefined')
+        return 'nil';
+    return `${o}`;
+}
+
 let test = `
 on sum (n acc)
   if = n 0
@@ -78,4 +88,4 @@ print nil
 (' hello world !)
 `;
 
-console.log('>', ev(parse(lex(test))));
+console.log('>', print(ev(parse(lex(test)))));
