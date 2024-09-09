@@ -1,7 +1,10 @@
 const arity = {
-    do: 1, print: 1, not: 1, inc: 1, dec: 1,
-    on: 2, set: 2, while: 2, '=': 2, '<': 2,
-    if: 3,
+    print: 1,
+    not: 1,
+    '=': 2, '<': 2,
+    '+': 2, '-': 2, '*': 2, '/': 2, '%': 2,
+    inc: 1, dec: 1,
+    on: 2, to: 2, if: 3, while: 2,
 };
 
 const lib = {
@@ -10,15 +13,15 @@ const lib = {
     not: ([x], e) => !ev(x, e),
     '=': ([x, y], e) => ev(x, e) === ev(y, e),
     '<': ([x, y], e) => ev(x, e) < ev(y, e),
-    '+': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p + c),
-    '-': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p - c),
-    '*': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p * c),
-    '/': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p / c),
-    '%': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p % c),
-    do: ([l], e) => (l.slice(0, -1).map(x => ev(x, e)), l[l.length - 1]),
+    '+': ([x, y], e) => ev(x, e) + ev(y, e),
+    '-': ([x, y], e) => ev(x, e) - ev(y, e),
+    '*': ([x, y], e) => ev(x, e) * ev(y, e),
+    '/': ([x, y], e) => ev(x, e) / ev(y, e),
+    '%': ([x, y], e) => ev(x, e) % ev(y, e),
+    do: (xs, e) => (xs.slice(0, -1).map(x => ev(x, e)), xs[xs.length - 1]),
     inc: ([k], e) => e[k]++,
     dec: ([k], e) => e[k]--,
-    set: ([k, v], e) => e[k] = ev(v, e),
+    to: ([k, v], e) => e[k] = ev(v, e),
     on: ([f, b], e) => e[f[0]] = new proc(f.slice(1), b, Object.assign({}, e)),
     if: ([c, t, f], e) => ev(c, e) ? t : f,
     while: ([c, t], e) => { let r; while (ev(c, e)) r = ev(t, e); return r; },
@@ -26,7 +29,7 @@ const lib = {
 
 function lex(s) {
     const re = /[^()\s]+|\S/g;
-    return ('do (' + s + ')').match(re);
+    return ('(do ' + s + ')').match(re);
 }
 
 function scan(tk) {
@@ -85,10 +88,10 @@ print acc
 on (make_gen i)
   on (_) print inc i
 
-set gen (make_gen 1)
+to gen (make_gen 1)
 while < (gen) 3 nil
 
-set i 3
+to i 3
 while < 0 i
   print dec i
 
@@ -96,9 +99,9 @@ print nil
 (' hello world !)
 
 on (fact n)
-  if (< n 1)
+  if < n 1
     1
-    (* n (fact (- n 1)))
+    * n (fact - n 1)
 
 (fact 5)
 `;
