@@ -1,6 +1,6 @@
 const arity = {
     print: 1,
-    not: 1,
+    not: 1, and: 2, or: 2,
     '=': 2, '<': 2,
     '+': 2, '-': 2, '*': 2, '/': 2, '%': 2,
     inc: 1, dec: 1,
@@ -11,6 +11,8 @@ const lib = {
     "'": (xs, _) => xs,
     print: ([v], e) => (v = ev(v, e), console.log(print(v)), v),
     not: ([x], e) => !ev(x, e),
+    and: ([x, y], e) => ev(x, e) && ev(y, e),
+    or: ([x, y], e) => ev(x, e) || ev(y, e),
     '=': ([x, y], e) => ev(x, e) === ev(y, e),
     '<': ([x, y], e) => ev(x, e) < ev(y, e),
     '+': ([x, y], e) => ev(x, e) + ev(y, e),
