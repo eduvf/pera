@@ -1,7 +1,7 @@
 const arity = {
     do: 1, print: 1, not: 1, inc: 1, dec: 1,
-    set: 2, while: 2, '=': 2, '<': 2,
-    on: 3, if: 3,
+    on: 2, set: 2, while: 2, '=': 2, '<': 2,
+    if: 3,
 };
 
 const lib = {
@@ -19,7 +19,7 @@ const lib = {
     inc: ([k], e) => e[k]++,
     dec: ([k], e) => e[k]--,
     set: ([k, v], e) => e[k] = ev(v, e),
-    on: ([k, p, b], e) => e[k] = new proc(p, b, Object.assign({}, e)),
+    on: ([f, b], e) => e[f[0]] = new proc(f.slice(1), b, Object.assign({}, e)),
     if: ([c, t, f], e) => ev(c, e) ? t : f,
     while: ([c, t], e) => { let r; while (ev(c, e)) r = ev(t, e); return r; },
 };
@@ -74,7 +74,7 @@ function print(o) {
 }
 
 let test = `
-on sum (n acc)
+on (sum n acc)
   if = n 0
     acc
     (sum (- n 1) (+ n acc))
@@ -82,8 +82,8 @@ on sum (n acc)
 print (sum 1000000 0)
 print acc
 
-on make_gen (i)
-  on _ () print inc i
+on (make_gen i)
+  on (_) print inc i
 
 set gen (make_gen 1)
 while < (gen) 3 nil
@@ -95,7 +95,7 @@ while < 0 i
 print nil
 (' hello world !)
 
-on fact (n)
+on (fact n)
   if (< n 1)
     1
     (* n (fact (- n 1)))
