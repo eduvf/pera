@@ -4,23 +4,21 @@ const arity = {
     on: 3, if: 3,
 };
 
-const env = {};
-
 const lib = {
-    "'": xs => xs,
-    print: ([v]) => (v = ev(v), console.log(print(v)), v),
-    not: ([x]) => !ev(x),
-    '=': ([x, y]) => ev(x) === ev(y),
-    '<': ([x, y]) => ev(x) < ev(y),
-    '+': xs => xs.map(ev).reduce((p, c) => p + c),
-    '-': xs => xs.map(ev).reduce((p, c) => p - c),
-    do: ([e]) => (e.slice(0, -1).map(ev), e[e.length - 1]),
-    inc: ([k]) => env[k]++,
-    dec: ([k]) => env[k]--,
-    set: ([k, v]) => env[k] = ev(v),
-    on: ([k, p, b]) => env[k] = new proc(p, b),
-    if: ([c, t, e]) => ev(c) ? t : e,
-    while: ([c, t]) => { let r; while (ev(c)) r = ev(t); return r; },
+    "'": (xs, _) => xs,
+    print: ([v], e) => (v = ev(v, e), console.log(print(v)), v),
+    not: ([x], e) => !ev(x, e),
+    '=': ([x, y], e) => ev(x, e) === ev(y, e),
+    '<': ([x, y], e) => ev(x, e) < ev(y, e),
+    '+': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p + c),
+    '-': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p - c),
+    do: ([l], e) => (l.slice(0, -1).map(x => ev(x, e)), l[l.length - 1]),
+    inc: ([k], e) => e[k]++,
+    dec: ([k], e) => e[k]--,
+    set: ([k, v], e) => e[k] = ev(v, e),
+    on: ([k, p, b], e) => e[k] = new proc(p, b, Object.assign({}, e)),
+    if: ([c, t, f], e) => ev(c, e) ? t : f,
+    while: ([c, t], e) => { let r; while (ev(c, e)) r = ev(t, e); return r; },
 };
 
 function lex(s) {
@@ -46,19 +44,20 @@ function parse(tk) {
     return isNaN(t) ? t : +t;
 }
 
-class proc { constructor(arg, body) { this.arg = arg, this.body = body; } }
+class proc { constructor(arg, body, env) { this.arg = arg, this.body = body, this.env = env; } }
 
-function ev(o) {
+function ev(o, e = {}) {
     while (Array.isArray(o) && o.length) {
         let [f, ...arg] = o;
         if (f in lib)
-            o = lib[f](arg);
-        else if ((f = ev(f)) instanceof proc) {
+            o = lib[f](arg, e);
+        else if ((f = ev(f, e)) instanceof proc) {
+            e = Object.assign(f.env, e);
             o = f.body;
-            arg.map(ev).forEach((x, i) => env[f.arg[i]] = x);
+            arg.map(x => ev(x, e)).forEach((x, i) => e[f.arg[i]] = x);
         } else break;
     }
-    return typeof o == 'string' ? env[o] : o;
+    return typeof o == 'string' ? e[o] : o;
 }
 
 function print(o) {
@@ -78,6 +77,13 @@ on sum (n acc)
     (sum (- n 1) (+ n acc))
 
 print (sum 1000000 0)
+print acc
+
+on make_gen (i)
+  on _ () print inc i
+
+set gen (make_gen 1)
+while < (gen) 3 nil
 
 set i 3
 while < 0 i
