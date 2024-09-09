@@ -12,6 +12,9 @@ const lib = {
     '<': ([x, y], e) => ev(x, e) < ev(y, e),
     '+': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p + c),
     '-': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p - c),
+    '*': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p * c),
+    '/': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p / c),
+    '%': (xs, e) => xs.map(x => ev(x, e)).reduce((p, c) => p % c),
     do: ([l], e) => (l.slice(0, -1).map(x => ev(x, e)), l[l.length - 1]),
     inc: ([k], e) => e[k]++,
     dec: ([k], e) => e[k]--,
@@ -31,7 +34,7 @@ function scan(tk) {
     while (tk.length && tk[0] != ')')
         e.push(parse(tk));
     tk.shift();
-    return e;
+    return e.length == 1 && e[0][0] in arity ? e[0] : e;
 }
 
 function parse(tk) {
@@ -91,6 +94,13 @@ while < 0 i
 
 print nil
 (' hello world !)
+
+on fact (n)
+  if (< n 1)
+    1
+    (* n (fact (- n 1)))
+
+(fact 5)
 `;
 
 console.log('>', print(ev(parse(lex(test)))));
