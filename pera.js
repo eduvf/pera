@@ -75,6 +75,8 @@ function print(o) {
         return `( ${o.map(print).join(' ')} )`;
     if (o instanceof proc)
         return 'function';
+    if (typeof o === 'object')
+        return `( table ${Object.keys(o).map(k => `( ${k} ${print(o[k])} )`).join(' ')} )`;
     if (typeof o === 'undefined')
         return 'nil';
     return `${o}`;
@@ -111,6 +113,7 @@ on (fact n)
 
 to t (table (one 1) (two 2))
 print (. t one)
+t
 `;
 
 console.log('>', print(ev(parse(lex(test)))));
