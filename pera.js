@@ -24,7 +24,7 @@ const lib = {
     inc: ([k], e) => e[k]++,
     dec: ([k], e) => e[k]--,
     to: ([k, v], e) => e[k] = ev(v, e),
-    on: ([f, b], e) => e[f[0]] = new proc(f.slice(1), b, Object.assign({}, e)),
+    on: ([f, b], e) => e[f[0]] = { is_fn: 1, arg: f.slice(1), body: b, env: structuredClone(e) },
     if: ([c, t, f], e) => ev(c, e) ? t : f,
     while: ([c, t], e) => { let r; while (ev(c, e)) r = ev(t, e); return r; },
     table: (kv, e) => Object.fromEntries(kv.map(p => [p[0], ev(p[1], e)])),
@@ -54,14 +54,12 @@ function parse(tk) {
     return isNaN(t) ? t : +t;
 }
 
-class proc { constructor(arg, body, env) { this.arg = arg, this.body = body, this.env = env; } }
-
 function ev(o, e = {}) {
     while (Array.isArray(o) && o.length) {
         let [f, ...arg] = o;
         if (f in lib)
             o = lib[f](arg, e);
-        else if ((f = ev(f, e)) instanceof proc) {
+        else if ((f = ev(f, e))?.is_fn) {
             e = Object.assign(f.env, e);
             o = f.body;
             arg.map(x => ev(x, e)).forEach((x, i) => e[f.arg[i]] = x);
@@ -73,8 +71,6 @@ function ev(o, e = {}) {
 function print(o) {
     if (Array.isArray(o))
         return `( ${o.map(print).join(' ')} )`;
-    if (o instanceof proc)
-        return 'function';
     if (typeof o === 'object')
         return `( table ${Object.keys(o).map(k => `( ${k} ${print(o[k])} )`).join(' ')} )`;
     if (typeof o === 'undefined')
