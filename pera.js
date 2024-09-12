@@ -27,6 +27,8 @@ const lib = {
     on: ([f, b], e) => e[f[0]] = new proc(f.slice(1), b, Object.assign({}, e)),
     if: ([c, t, f], e) => ev(c, e) ? t : f,
     while: ([c, t], e) => { let r; while (ev(c, e)) r = ev(t, e); return r; },
+    table: (kv, e) => Object.fromEntries(kv.map(p => [p[0], ev(p[1], e)])),
+    '.': ([t, ...ks], e) => [ev(t, e), ...ks].reduce((p, c) => p[c]),
 };
 
 function lex(s) {
@@ -106,6 +108,9 @@ on (fact n)
     * n (fact - n 1)
 
 (fact 5)
+
+to t (table (one 1) (two 2))
+print (. t one)
 `;
 
 console.log('>', print(ev(parse(lex(test)))));
