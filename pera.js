@@ -5,6 +5,7 @@ const arity = {
     '+': 2, '-': 2, '*': 2, '/': 2, '%': 2,
     inc: 1, dec: 1,
     on: 2, to: 2, if: 3, while: 2,
+    put: 3,
 };
 
 const lib = {
@@ -29,6 +30,7 @@ const lib = {
     while: ([c, t], e) => { let r; while (ev(c, e)) r = ev(t, e); return r; },
     table: (kv, e) => Object.fromEntries(kv.map(p => [p[0], ev(p[1], e)])),
     '.': ([t, ...ks], e) => [ev(t, e), ...ks].reduce((p, c) => p[c]),
+    put: ([t, k, v], e) => ev(t, e)[k] = ev(v, e),
 };
 
 function lex(s) {
@@ -107,8 +109,9 @@ on (fact n)
 
 (fact 5)
 
-to t (table (one 1) (two 2))
+to t (table (one 1) (two 3))
 print (. t one)
+put t two 2
 t
 `;
 
