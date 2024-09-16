@@ -1,5 +1,6 @@
 const arity = {
     print: 1,
+    '#': 1,
     not: 1, and: 2, or: 2,
     '=': 2, '<': 2,
     '+': 2, '-': 2, '*': 2, '/': 2, '%': 2,
@@ -31,6 +32,7 @@ const lib = {
     list: (xs, e) => xs.map(x => ev(x, e)),
     '.': ([t, ...ks], e) => [ev(t, e), ...ks].reduce((p, c) => p[c]),
     put: ([t, k, v], e) => ev(t, e)[k] = ev(v, e),
+    '#': ([t], e) => Object.keys(ev(t, e)).length,
 };
 
 function lex(s) {
@@ -107,8 +109,10 @@ to t (table (one 1) (two 3))
 print (. t one)
 put t two 2
 print t
+print # t
 
-(list 1 2 3)
+to l (list 1 2 3)
+# l
 `;
 
 console.log('>', print(ev(parse(lex(test)))));
