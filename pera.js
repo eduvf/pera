@@ -9,7 +9,6 @@ const arity = {
 };
 
 const lib = {
-    "'": (xs, _) => xs,
     print: ([v], e) => (v = ev(v, e), console.log(print(v)), v),
     not: ([x], e) => !ev(x, e),
     and: ([x, y], e) => ev(x, e) && ev(y, e),
@@ -72,8 +71,6 @@ function ev(o, e = {}) {
 }
 
 function print(o) {
-    if (Array.isArray(o))
-        return `( ${o.map(print).join(' ')} )`;
     if (typeof o === 'object')
         return `( table ${Object.keys(o).map(k => `( ${k} ${print(o[k])} )`).join(' ')} )`;
     if (typeof o === 'undefined')
@@ -100,14 +97,10 @@ to i 3
 while < 0 i
   print dec i
 
-print nil
-(' hello world !)
-
 on (fact n)
   if < n 1
     1
     * n (fact - n 1)
-
 (fact 5)
 
 to t (table (one 1) (two 3))
