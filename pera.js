@@ -29,6 +29,7 @@ const lib = {
     if: ([c, t, f], e) => ev(c, e) ? t : f,
     while: ([c, t], e) => { let r; while (ev(c, e)) r = ev(t, e); return r; },
     table: (kv, e) => Object.fromEntries(kv.map(p => [p[0], ev(p[1], e)])),
+    list: (xs, e) => xs.map(x => ev(x, e)),
     '.': ([t, ...ks], e) => [ev(t, e), ...ks].reduce((p, c) => p[c]),
     put: ([t, k, v], e) => ev(t, e)[k] = ev(v, e),
 };
@@ -112,7 +113,9 @@ on (fact n)
 to t (table (one 1) (two 3))
 print (. t one)
 put t two 2
-t
+print t
+
+(list 1 2 3)
 `;
 
 console.log('>', print(ev(parse(lex(test)))));
