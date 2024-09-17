@@ -7,7 +7,7 @@ const arity = {
     '+': 2, '-': 2, '*': 2, '/': 2, '%': 2,
     inc: 1, dec: 1,
     on: 2, to: 2, if: 3, while: 2,
-    put: 3,
+    put: 3, pop: 1, push: 2
 };
 
 const tail = ['do', 'if'];
@@ -34,6 +34,8 @@ const lib = {
     table: (xs, e) => xs.reduce((p, c) => (c[0] == ':' ? p[c[1]] = ev(c[2], e) : p.push(ev(c, e)), p), []),
     '.': ([t, ...kv], e) => kv.reduce((p, c) => p[c], ev(t, e)),
     put: ([t, k, v], e) => ev(t, e)[k] = ev(v, e),
+    pop: ([t], e) => ev(t, e)?.pop(),
+    push: ([t, v], e) => ev(t, e)?.push(ev(v, e)),
     '#': ([t], e) => Object.keys(ev(t, e)).length,
 };
 
@@ -114,11 +116,19 @@ put t two 2
 print t
 print # t
 
-to l (table 1 2 3 + 2 2)
+to l (table 1 2 3 + 2 2 : ten 10)
 print l
 print # l
 
-(. fact body)
+print (. fact body)
+
+print pop l
+print pop l
+put l eleven 11
+print l
+print push l 10
+print push l 20
+print l
 `;
 
 console.log('>', print(ev(parse(lex(test)))));
