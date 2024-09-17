@@ -10,6 +10,8 @@ const arity = {
     put: 3,
 };
 
+const tail = ['do', 'if'];
+
 const lib = {
     print: ([v], e) => (v = ev(v, e), console.log(print(v)), v),
     not: ([x], e) => !ev(x, e),
@@ -62,9 +64,10 @@ function parse(tk) {
 function ev(o, e = {}) {
     while (Array.isArray(o) && o.length) {
         let [f, ...arg] = o;
-        if (f in lib)
+        if (f in lib) {
             o = lib[f](arg, e);
-        else if ((f = ev(f, e))?.is_fn) {
+            if (!tail.includes(f)) return o;
+        } else if ((f = ev(f, e))?.is_fn) {
             e = Object.assign(f.env, e);
             o = f.body;
             arg.map(x => ev(x, e)).forEach((x, i) => e[f.arg[i]] = x);
@@ -115,6 +118,8 @@ print # t
 to l (table 1 2 3 + 2 2)
 print l
 print # l
+
+(. fact body)
 `;
 
 console.log('>', print(ev(parse(lex(test)))));
