@@ -1,6 +1,7 @@
 const arity = {
     print: 1,
     '#': 1,
+    ':': 2,
     not: 1, and: 2, or: 2,
     '=': 2, '<': 2,
     '+': 2, '-': 2, '*': 2, '/': 2, '%': 2,
@@ -28,9 +29,9 @@ const lib = {
     on: ([f, b], e) => e[f[0]] = { is_fn: 1, arg: f.slice(1), body: b, env: structuredClone(e) },
     if: ([c, t, f], e) => ev(c, e) ? t : f,
     while: ([c, t], e) => { let r; while (ev(c, e)) r = ev(t, e); return r; },
-    table: (kv, e) => Object.fromEntries(kv.map(p => [p[0], ev(p[1], e)])),
-    list: (xs, e) => xs.map(x => ev(x, e)),
-    '.': ([t, ...ks], e) => [ev(t, e), ...ks].reduce((p, c) => p[c]),
+    table: (xs, e) => Object.fromEntries(xs.map((x, i) => [x[0] == ':' ? x[1] : i, ev(x, e)])),
+    ':': ([_, v], e) => v,
+    '.': ([t, ...kv], e) => kv.reduce((p, c) => p[c], ev(t, e)),
     put: ([t, k, v], e) => ev(t, e)[k] = ev(v, e),
     '#': ([t], e) => Object.keys(ev(t, e)).length,
 };
@@ -74,7 +75,7 @@ function ev(o, e = {}) {
 
 function print(o) {
     if (typeof o === 'object')
-        return `( table ${Object.keys(o).map(k => `( ${k} ${print(o[k])} )`).join(' ')} )`;
+        return `( table ${Object.keys(o).map((k, i) => (k == i ? `` : `: ${k} `) + print(o[k])).join(' ')} )`;
     if (typeof o === 'undefined')
         return 'nil';
     return `${o}`;
@@ -105,14 +106,15 @@ on (fact n)
     * n (fact - n 1)
 (fact 5)
 
-to t (table (one 1) (two 3))
+to t (table : one 1 : two 3)
 print (. t one)
 put t two 2
 print t
 print # t
 
-to l (list 1 2 3)
-# l
+to l (table 1 2 3 + 2 2)
+print l
+print # l
 `;
 
 console.log('>', print(ev(parse(lex(test)))));
