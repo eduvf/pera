@@ -43,8 +43,6 @@ function parse(tk) {
 	return isNaN(t) ? t : +t;
 }
 
-const env = {};
-
 const lib = {
 	be: (...x) => x.at(-1),
 	'=': (x, y) => x == y,
@@ -58,29 +56,30 @@ const lib = {
 };
 
 const pre = {
-	to: ([kv, exp]) => (kv.forEach(([k, v]) => env[k] = exec(v)), exec(exp)),
-	on: ([[f, ...arg], exp]) => env[f] = { arg: arg, exp: exp },
-	if: ([cond, yes, no]) => exec(cond) ? yes : no,
-	while: ([cond, exp]) => { let x; while (exec(cond)) x = exec(exp); return x; },
-	set: ([k, exp]) => env[k] = exec(exp),
-	inc: ([k]) => env[k]++,
-	dec: ([k]) => env[k]--,
+	to: ([kv, exp], e) => (kv.forEach(([k, v]) => e[k] = exec(v, e)), exec(exp, e)),
+	on: ([[f, ...arg], exp], e) => e[f] = { arg: arg, exp: exp, env: structuredClone(e) },
+	if: ([cond, yes, no], e) => exec(cond, e) ? yes : no,
+	while: ([cond, exp], e) => { let x; while (exec(cond, e)) x = exec(exp, e); return x; },
+	set: ([k, exp], e) => e[k] = exec(exp, e),
+	inc: ([k], e) => e[k]++,
+	dec: ([k], e) => e[k]--,
 };
 
-function exec(o) {
+function exec(o, e = {}) {
 	while (Array.isArray(o) && o.length) {
 		const [f, ...arg] = o;
 		if (f in lib)
-			return lib[f](...arg.map(exec));
+			return lib[f](...arg.map(a => exec(a, e)));
 		if (f in pre)
-			o = pre[f](arg);
+			o = pre[f](arg, e);
 		else {
-			const userf = env[f];
-			arg.forEach((a, i) => env[userf.arg[i]] = exec(a));
+			const userf = e[f];
+			e = Object.assign(userf.env, e);
+			arg.forEach((a, i) => e[userf.arg[i]] = exec(a, e));
 			o = userf.exp;
 		}
 	}
-	return typeof o == 'string' ? env[o] : o;
+	return typeof o == 'string' ? e[o] : o;
 }
 
 function run(code) {
