@@ -28,8 +28,7 @@ function scan(tk, end) {
 	return e;
 }
 
-const pairs = (ls) =>
-	ls.reduce((p, c, i) => i % 2 ? [...p, [ls[i - 1], c]] : p, []);
+const pairs = (p, c, i, ls) => i % 2 ? [...p, [ls[i - 1], c]] : p;
 
 function parse(tk) {
 	let t = tk.shift();
@@ -38,7 +37,7 @@ function parse(tk) {
 	if (t == 'be')
 		return [t].concat(scan(tk, '.'));
 	if (t == 'to')
-		return [t].concat([pairs(scan(tk, 'do'))], [parse(tk)]);
+		return [t].concat([scan(tk, 'do').reduce(pairs, [])], [parse(tk)]);
 	if (t in arity)
 		return [t, ...Array(arity[t]).fill().map(() => parse(tk))];
 	return isNaN(t) ? t : +t;
