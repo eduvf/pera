@@ -12,18 +12,23 @@ const arity = {
 
 function lex(s) {
 	const re = /[^()\s]+|\S/gs;
-	return s.match(re);
+	return ('be ' + s + ' .').match(re);
+}
+
+function scan(tk, end) {
+	let e = [];
+	while (tk[0] != end && tk.length)
+		e.push(parse(tk));
+	tk.shift();
+	return e;
 }
 
 function parse(tk) {
 	let t = tk.shift();
-	if (t == '(') {
-		let e = [];
-		while (tk[0] != ')' && tk.length)
-			e.push(parse(tk));
-		tk.shift();
-		return e;
-	}
+	if (t == '(')
+		return scan(tk, ')');
+	if (t == 'be')
+		return [t].concat(scan(tk, '.'));
 	if (t in arity)
 		return [t, ...Array(arity[t]).fill().map(() => parse(tk))];
 	return isNaN(t) ? t : +t;
@@ -39,5 +44,7 @@ on (f n)
   if = n 0
     1
     * n (f - n 1)
+
+(f 5)
 
 `);
