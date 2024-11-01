@@ -28,12 +28,17 @@ function scan(tk, end) {
 	return e;
 }
 
+const pairs = (ls) =>
+	ls.reduce((p, c, i) => i % 2 ? [...p, [ls[i - 1], c]] : p, []);
+
 function parse(tk) {
 	let t = tk.shift();
 	if (t == '(')
 		return scan(tk, ')');
 	if (t == 'be')
 		return [t].concat(scan(tk, '.'));
+	if (t == 'to')
+		return [t].concat([pairs(scan(tk, 'do'))], [parse(tk)]);
 	if (t in arity)
 		return [t, ...Array(arity[t]).fill().map(() => parse(tk))];
 	return isNaN(t) ? t : +t;
@@ -54,6 +59,7 @@ const lib = {
 };
 
 const pre = {
+	to: ([kv, exp]) => (kv.forEach(([k, v]) => env[k] = exec(v)), exec(exp)),
 	on: ([[f, ...arg], exp]) => env[f] = { arg: arg, exp: exp },
 	if: ([cond, yes, no]) => exec(cond) ? yes : no,
 	while: ([cond, exp]) => { let x; while (exec(cond)) x = exec(exp); return x; },
@@ -90,12 +96,12 @@ on (f n)
     * n (f - n 1)
 
 on (f n)
-  be
-    set r 1
-    set i 1
+  to
+    r 1
+    i 1
+  do
     while <= i n
       set r * r inc i
-  .
 
 (f 5)
 
