@@ -34,8 +34,42 @@ function parse(tk) {
 	return isNaN(t) ? t : +t;
 }
 
+const env = {};
+
+const lib = {
+	be: (...x) => x.at(-1),
+	'=': (x, y) => x == y,
+	'<': (x, y) => x < y,
+	'+': (x, y) => x + y,
+	'-': (x, y) => x - y,
+	'*': (x, y) => x * y,
+	'/': (x, y) => x / y,
+	'%': (x, y) => x % y,
+};
+
+const pre = {
+	on: ([[f, ...arg], exp]) => env[f] = { arg: arg, exp: exp },
+	if: ([cond, yes, no]) => exec(cond) ? yes : no,
+};
+
+function exec(o) {
+	while (Array.isArray(o) && o.length) {
+		const [f, ...arg] = o;
+		if (f in lib)
+			return lib[f](...arg.map(exec));
+		if (f in pre)
+			o = pre[f](arg);
+		else {
+			const userf = env[f];
+			arg.forEach((a, i) => env[userf.arg[i]] = exec(a));
+			o = userf.exp;
+		}
+	}
+	return typeof o == 'string' ? env[o] : o;
+}
+
 function run(code) {
-	console.dir(parse(lex(code)), { depth: null });
+	console.dir(exec(parse(lex(code))), { depth: null });
 }
 
 run(`
