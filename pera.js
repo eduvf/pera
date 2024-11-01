@@ -1,8 +1,13 @@
 const arity = {
 	on: 2,
 	if: 3,
+	while: 2,
+	set: 2,
+	inc: 1,
+	dec: 1,
 	'=': 2,
 	'<': 2,
+	'<=': 2,
 	'+': 2,
 	'-': 2,
 	'*': 2,
@@ -40,6 +45,7 @@ const lib = {
 	be: (...x) => x.at(-1),
 	'=': (x, y) => x == y,
 	'<': (x, y) => x < y,
+	'<=': (x, y) => x <= y,
 	'+': (x, y) => x + y,
 	'-': (x, y) => x - y,
 	'*': (x, y) => x * y,
@@ -50,6 +56,10 @@ const lib = {
 const pre = {
 	on: ([[f, ...arg], exp]) => env[f] = { arg: arg, exp: exp },
 	if: ([cond, yes, no]) => exec(cond) ? yes : no,
+	while: ([cond, exp]) => { let x; while (exec(cond)) x = exec(exp); return x; },
+	set: ([k, exp]) => env[k] = exec(exp),
+	inc: ([k]) => env[k]++,
+	dec: ([k]) => env[k]--,
 };
 
 function exec(o) {
@@ -78,6 +88,14 @@ on (f n)
   if = n 0
     1
     * n (f - n 1)
+
+on (f n)
+  be
+    set r 1
+    set i 1
+    while <= i n
+      set r * r inc i
+  .
 
 (f 5)
 
