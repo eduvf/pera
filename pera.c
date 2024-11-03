@@ -4,57 +4,57 @@
 
 typedef enum
 {
-  OP_RET,
+  OP_RETURN,
 } opcode_t;
 
 typedef struct
 {
   int length;
   int capacity;
-  uint8_t *data;
-} array_t;
+  uint8_t *code;
+} block_t;
 
-/* ARRAY FUNCTIONS */
+/* BLOCK FUNCTIONS */
 
 void
-array_new (array_t *array)
+block_new (block_t *block)
 {
-  array->length = 0;
-  array->capacity = 8;
-  array->data = malloc (8);
+  block->length = 0;
+  block->capacity = 8;
+  block->code = malloc (8);
 }
 
 void
-array_push (array_t *array, uint8_t byte)
+block_push (block_t *block, uint8_t byte)
 {
-  if (array->capacity < array->length + 1)
+  if (block->capacity < block->length + 1)
     {
-      array->capacity *= 2;
-      array->data = realloc (array->data, array->capacity);
-      if (array->data == NULL)
+      block->capacity *= 2;
+      block->code = realloc (block->code, block->capacity);
+      if (block->code == NULL)
         exit (1);
     }
 
-  array->data[array->length] = byte;
-  array->length++;
+  block->code[block->length] = byte;
+  block->length++;
 }
 
 void
-array_free (array_t *array)
+block_free (block_t *block)
 {
-  free (array->data);
+  free (block->code);
 }
 
 /* DEBUG */
 
 int
-disassemble_operation (array_t *array, size_t offset)
+disassemble_operation (block_t *block, size_t offset)
 {
-  opcode_t op = array->data[offset];
+  opcode_t op = block->code[offset];
 
   switch (op)
     {
-    case OP_RET:
+    case OP_RETURN:
       printf ("RETURN\n");
       return 1;
     default:
@@ -64,24 +64,24 @@ disassemble_operation (array_t *array, size_t offset)
 }
 
 void
-disassemble (array_t *array)
+disassemble (block_t *block)
 {
-  for (size_t offset = 0; offset < array->length;)
+  for (size_t offset = 0; offset < block->length;)
     {
       printf ("%04zx ", offset);
-      offset += disassemble_operation (array, offset);
+      offset += disassemble_operation (block, offset);
     }
 }
 
 int
 main (void)
 {
-  array_t a;
-  array_new (&a);
+  block_t block;
+  block_new (&block);
 
-  array_push (&a, OP_RET);
-  disassemble (&a);
+  block_push (&block, OP_RETURN);
+  disassemble (&block);
 
-  array_free (&a);
+  block_free (&block);
   return 0;
 }
