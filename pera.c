@@ -6,6 +6,7 @@ typedef double value_t;
 
 typedef enum
 {
+  OP_CONSTANT,
   OP_RETURN,
 } opcode_t;
 
@@ -81,7 +82,7 @@ block_push (block_t *block, uint8_t byte)
   block->length++;
 }
 
-int
+uint8_t
 block_add_constant (block_t *block, value_t value)
 {
   array_push (&block->constants, value);
@@ -100,10 +101,18 @@ block_free (block_t *block)
 int
 disassemble_operation (block_t *block, size_t offset)
 {
+  uint8_t constant;
+  value_t value;
+
   opcode_t op = block->code[offset];
 
   switch (op)
     {
+    case OP_CONSTANT:
+      constant = block->code[offset + 1];
+      value = block->constants.values[constant];
+      printf ("CONSTANT %02x %g\n", constant, value);
+      return 2;
     case OP_RETURN:
       printf ("RETURN\n");
       return 1;
@@ -129,6 +138,10 @@ main (void)
   block_t block;
   block_new (&block);
 
+  block_push (&block, OP_CONSTANT);
+  block_push (&block, block_add_constant (&block, 1));
+  block_push (&block, OP_CONSTANT);
+  block_push (&block, block_add_constant (&block, 2.3));
   block_push (&block, OP_RETURN);
   disassemble (&block);
 
