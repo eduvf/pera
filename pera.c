@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef double value_t;
+
 typedef enum
 {
   OP_RETURN,
@@ -11,8 +13,47 @@ typedef struct
 {
   int length;
   int capacity;
+  value_t *values;
+} array_t;
+
+typedef struct
+{
+  int length;
+  int capacity;
   uint8_t *code;
+  array_t constants;
 } block_t;
+
+/* ARRAY FUNCTIONS */
+
+void
+array_new (array_t *array)
+{
+  array->length = 0;
+  array->capacity = 8;
+  array->values = malloc (8);
+}
+
+void
+array_push (array_t *array, value_t value)
+{
+  if (array->capacity < array->length + 1)
+    {
+      array->capacity *= 2;
+      array->values = realloc (array->values, array->capacity);
+      if (array->values == NULL)
+        exit (1);
+    }
+
+  array->values[array->length] = value;
+  array->length++;
+}
+
+void
+array_free (array_t *array)
+{
+  free (array->values);
+}
 
 /* BLOCK FUNCTIONS */
 
@@ -22,6 +63,7 @@ block_new (block_t *block)
   block->length = 0;
   block->capacity = 8;
   block->code = malloc (8);
+  array_new (&block->constants);
 }
 
 void
@@ -39,10 +81,18 @@ block_push (block_t *block, uint8_t byte)
   block->length++;
 }
 
+int
+block_add_constant (block_t *block, value_t value)
+{
+  array_push (&block->constants, value);
+  return block->constants.length - 1;
+}
+
 void
 block_free (block_t *block)
 {
   free (block->code);
+  array_free (&block->constants);
 }
 
 /* DEBUG */
