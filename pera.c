@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #define DEBUG
+#define STACK_SIZE 256
 
 typedef double value_t;
 
@@ -39,6 +40,8 @@ typedef struct
 {
   block_t block;
   uint8_t *pc;
+  value_t stack[STACK_SIZE];
+  value_t *top;
 } vm_t;
 
 /* ARRAY FUNCTIONS */
@@ -121,6 +124,7 @@ block_free (block_t *block)
 void
 vm_new (vm_t *vm)
 {
+  vm->top = vm->stack;
   block_new (&vm->block);
 }
 
@@ -128,6 +132,20 @@ void
 vm_free (vm_t *vm)
 {
   block_free (&vm->block);
+}
+
+void
+push (vm_t *vm, value_t value)
+{
+  *vm->top = value;
+  vm->top++;
+}
+
+value_t
+pop (vm_t *vm)
+{
+  vm->top--;
+  return *vm->top;
 }
 
 /* DEBUG */
