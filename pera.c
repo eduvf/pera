@@ -10,6 +10,13 @@ typedef enum
   OP_RETURN,
 } opcode_t;
 
+typedef enum
+{
+  RESULT_OK,
+  RESULT_COMPILE_ERROR,
+  RESULT_RUNTIME_ERROR,
+} result_t;
+
 typedef struct
 {
   int length;
@@ -29,6 +36,7 @@ typedef struct
 typedef struct
 {
   block_t block;
+  uint8_t *pc;
 } vm_t;
 
 /* ARRAY FUNCTIONS */
@@ -120,6 +128,32 @@ vm_free (vm_t *vm)
   block_free (&vm->block);
 }
 
+/* INTERPRET */
+
+static result_t
+run (vm_t *vm)
+{
+  uint8_t op;
+
+  while (1)
+    switch (op = *vm->pc++)
+      {
+      case OP_CONSTANT:
+        printf ("%g\n", vm->block.constants.values[*vm->pc++]);
+        break;
+      case OP_RETURN:
+        return RESULT_OK;
+      }
+}
+
+result_t
+interpret (vm_t *vm, block_t *block)
+{
+  vm->block = *block;
+  vm->pc = vm->block.code;
+  return run (vm);
+}
+
 /* DEBUG */
 
 int
@@ -177,6 +211,8 @@ main (void)
   block_push (block, block_add_constant (block, 2.3), 1);
   block_push (block, OP_RETURN, 2);
   disassemble (block);
+
+  interpret (&vm, block);
 
   vm_free (&vm);
   return 0;
