@@ -273,6 +273,14 @@ interpret (vm_t *vm, block_t *block)
   return run (vm);
 }
 
+void
+init_message ()
+{
+  puts ("  ,  \n"
+        " / \\ \n"
+        "(_\"_)\n");
+}
+
 /* MAIN */
 
 int
@@ -280,6 +288,8 @@ main (void)
 {
   vm_t vm;
   block_t *block;
+
+  init_message ();
 
   vm_new (&vm);
   block = &vm.block;
