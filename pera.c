@@ -196,18 +196,25 @@ static result_t
 run (vm_t *vm)
 {
   uint8_t op;
+  value_t v;
 
   while (1)
     {
 #ifdef DEBUG
+      for (value_t *v = vm->stack; v < vm->top; v++)
+        printf ("[%g]", *v);
+      printf ("\n");
       disassemble_operation (&vm->block, (int)(vm->pc - vm->block.code));
 #endif
       switch (op = *vm->pc++)
         {
         case OP_CONSTANT:
-          printf ("%g\n", vm->block.constants.values[*vm->pc++]);
+          v = vm->block.constants.values[*vm->pc++];
+          printf ("%g\n", v);
+          push (vm, v);
           break;
         case OP_RETURN:
+          printf ("%g\n", pop (vm));
           return RESULT_OK;
         }
     }
