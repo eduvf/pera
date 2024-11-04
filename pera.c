@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +11,12 @@ typedef double value_t;
 typedef enum
 {
   OP_CONSTANT,
+  OP_NEG,
+  OP_ADD,
+  OP_SUB,
+  OP_MUL,
+  OP_DIV,
+  OP_MOD,
   OP_RETURN,
 } opcode_t;
 
@@ -165,6 +172,24 @@ disassemble_operation (block_t *block, size_t offset)
       value = block->constants.values[constant];
       printf ("CONSTANT %02x %g\n", constant, value);
       return 2;
+    case OP_NEG:
+      printf ("NEG\n");
+      return 1;
+    case OP_ADD:
+      printf ("ADD\n");
+      return 1;
+    case OP_SUB:
+      printf ("SUB\n");
+      return 1;
+    case OP_MUL:
+      printf ("MUL\n");
+      return 1;
+    case OP_DIV:
+      printf ("DIV\n");
+      return 1;
+    case OP_MOD:
+      printf ("MOD\n");
+      return 1;
     case OP_RETURN:
       printf ("RETURN\n");
       return 1;
@@ -192,6 +217,15 @@ disassemble (block_t *block)
 
 /* INTERPRET */
 
+#define BINARY_OP(o)                                                          \
+  do                                                                          \
+    {                                                                         \
+      double b = pop (vm);                                                    \
+      double a = pop (vm);                                                    \
+      push (vm, a o b);                                                       \
+    }                                                                         \
+  while (0)
+
 static result_t
 run (vm_t *vm)
 {
@@ -213,6 +247,28 @@ run (vm_t *vm)
           printf ("%g\n", v);
           push (vm, v);
           break;
+        case OP_NEG:
+          push (vm, -pop (vm));
+          break;
+        case OP_ADD:
+          BINARY_OP (+);
+          break;
+        case OP_SUB:
+          BINARY_OP (-);
+          break;
+        case OP_MUL:
+          BINARY_OP (*);
+          break;
+        case OP_DIV:
+          BINARY_OP (/);
+          break;
+        case OP_MOD:
+          {
+            double b = pop (vm);
+            double a = pop (vm);
+            push (vm, fmod (a, b));
+            break;
+          }
         case OP_RETURN:
           printf ("%g\n", pop (vm));
           return RESULT_OK;
@@ -243,7 +299,8 @@ main (void)
   block_push (block, block_add_constant (block, 1), 1);
   block_push (block, OP_CONSTANT, 1);
   block_push (block, block_add_constant (block, 2.3), 1);
-  block_push (block, OP_RETURN, 2);
+  block_push (block, OP_ADD, 2);
+  block_push (block, OP_RETURN, 3);
   disassemble (block);
 
   interpret (&vm, block);
