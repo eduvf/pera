@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define DEBUG
+
 typedef double value_t;
 
 typedef enum
@@ -128,32 +130,6 @@ vm_free (vm_t *vm)
   block_free (&vm->block);
 }
 
-/* INTERPRET */
-
-static result_t
-run (vm_t *vm)
-{
-  uint8_t op;
-
-  while (1)
-    switch (op = *vm->pc++)
-      {
-      case OP_CONSTANT:
-        printf ("%g\n", vm->block.constants.values[*vm->pc++]);
-        break;
-      case OP_RETURN:
-        return RESULT_OK;
-      }
-}
-
-result_t
-interpret (vm_t *vm, block_t *block)
-{
-  vm->block = *block;
-  vm->pc = vm->block.code;
-  return run (vm);
-}
-
 /* DEBUG */
 
 int
@@ -195,6 +171,39 @@ disassemble (block_t *block)
       offset += disassemble_operation (block, offset);
     }
 }
+
+/* INTERPRET */
+
+static result_t
+run (vm_t *vm)
+{
+  uint8_t op;
+
+  while (1)
+    {
+#ifdef DEBUG
+      disassemble_operation (&vm->block, (int)(vm->pc - vm->block.code));
+#endif
+      switch (op = *vm->pc++)
+        {
+        case OP_CONSTANT:
+          printf ("%g\n", vm->block.constants.values[*vm->pc++]);
+          break;
+        case OP_RETURN:
+          return RESULT_OK;
+        }
+    }
+}
+
+result_t
+interpret (vm_t *vm, block_t *block)
+{
+  vm->block = *block;
+  vm->pc = vm->block.code;
+  return run (vm);
+}
+
+/* MAIN */
 
 int
 main (void)
