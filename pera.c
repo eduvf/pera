@@ -26,6 +26,11 @@ typedef struct
   array_t constants;
 } block_t;
 
+typedef struct
+{
+  block_t block;
+} vm_t;
+
 /* ARRAY FUNCTIONS */
 
 void
@@ -101,6 +106,20 @@ block_free (block_t *block)
   array_free (&block->constants);
 }
 
+/* VM FUNCTIONS */
+
+void
+vm_new (vm_t *vm)
+{
+  block_new (&vm->block);
+}
+
+void
+vm_free (vm_t *vm)
+{
+  block_free (&vm->block);
+}
+
 /* DEBUG */
 
 int
@@ -146,16 +165,19 @@ disassemble (block_t *block)
 int
 main (void)
 {
-  block_t block;
-  block_new (&block);
+  vm_t vm;
+  block_t *block;
 
-  block_push (&block, OP_CONSTANT, 1);
-  block_push (&block, block_add_constant (&block, 1), 1);
-  block_push (&block, OP_CONSTANT, 1);
-  block_push (&block, block_add_constant (&block, 2.3), 1);
-  block_push (&block, OP_RETURN, 2);
-  disassemble (&block);
+  vm_new (&vm);
+  block = &vm.block;
 
-  block_free (&block);
+  block_push (block, OP_CONSTANT, 1);
+  block_push (block, block_add_constant (block, 1), 1);
+  block_push (block, OP_CONSTANT, 1);
+  block_push (block, block_add_constant (block, 2.3), 1);
+  block_push (block, OP_RETURN, 2);
+  disassemble (block);
+
+  vm_free (&vm);
   return 0;
 }
