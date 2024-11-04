@@ -38,7 +38,6 @@ typedef struct
 {
   int length;
   int capacity;
-  int *lines;
   uint8_t *code;
   array_t constants;
 } block_t;
@@ -89,24 +88,21 @@ block_new (block_t *block)
 {
   block->length = 0;
   block->capacity = 8;
-  block->lines = malloc (8);
   block->code = malloc (8);
   array_new (&block->constants);
 }
 
 void
-block_push (block_t *block, uint8_t byte, int line)
+block_push (block_t *block, uint8_t byte)
 {
   if (block->capacity < block->length + 1)
     {
       block->capacity *= 2;
-      block->lines = realloc (block->lines, block->capacity);
       block->code = realloc (block->code, block->capacity);
-      if (block->lines == NULL || block->code == NULL)
+      if (block->code == NULL)
         exit (1);
     }
 
-  block->lines[block->length] = line;
   block->code[block->length] = byte;
   block->length++;
 }
@@ -121,7 +117,6 @@ block_add_constant (block_t *block, value_t value)
 void
 block_free (block_t *block)
 {
-  free (block->lines);
   free (block->code);
   array_free (&block->constants);
 }
@@ -205,12 +200,6 @@ disassemble (block_t *block)
   for (size_t offset = 0; offset < block->length;)
     {
       printf ("%04zx ", offset);
-
-      if (offset == 0 || block->lines[offset - 1] != block->lines[offset])
-        printf ("%4d ", block->lines[offset]);
-      else
-        printf ("     ");
-
       offset += disassemble_operation (block, offset);
     }
 }
@@ -295,12 +284,13 @@ main (void)
   vm_new (&vm);
   block = &vm.block;
 
-  block_push (block, OP_CONSTANT, 1);
-  block_push (block, block_add_constant (block, 1), 1);
-  block_push (block, OP_CONSTANT, 1);
-  block_push (block, block_add_constant (block, 2.3), 1);
-  block_push (block, OP_ADD, 2);
-  block_push (block, OP_RETURN, 3);
+  block_push (block, OP_CONSTANT);
+  block_push (block, block_add_constant (block, 1));
+  block_push (block, OP_CONSTANT);
+  block_push (block, block_add_constant (block, 2.3));
+  block_push (block, OP_ADD);
+  block_push (block, OP_NEG);
+  block_push (block, OP_RETURN);
   disassemble (block);
 
   interpret (&vm, block);
