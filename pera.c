@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -306,23 +307,27 @@ scan_new (const char *source)
   scan.current = source;
 }
 
+bool
+is_whitespace (char c)
+{
+  return c == ' ' || c == '\r' || c == '\n' || c == '\t';
+}
+
+bool
+is_word (char c)
+{
+  return c != '(' && c != ')' && !is_whitespace (c);
+}
+
 void
 ignore_whitespace ()
 {
   while (1)
     {
       char c = *scan.current;
-      switch (c)
-        {
-        case ' ':
-        case '\r':
-        case '\n':
-        case '\t':
-          scan.current++;
-          break;
-        default:
-          return;
-        }
+      if (!is_whitespace (c))
+        return;
+      scan.current++;
     }
 }
 
@@ -361,7 +366,12 @@ scan_token ()
       return token_create (TOKEN_RPAREN);
     }
 
-  return token_error_create ("Unexpected character");
+  while (is_word (*scan.current))
+    scan.current++;
+
+  return token_create (TOKEN_WORD);
+
+  // return token_error_create ("Unexpected character");
 }
 
 void
