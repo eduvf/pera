@@ -306,6 +306,26 @@ scan_new (const char *source)
   scan.current = source;
 }
 
+void
+ignore_whitespace ()
+{
+  while (1)
+    {
+      char c = *scan.current;
+      switch (c)
+        {
+        case ' ':
+        case '\r':
+        case '\n':
+        case '\t':
+          scan.current++;
+          break;
+        default:
+          return;
+        }
+    }
+}
+
 token_t
 token_create (token_type_t type)
 {
@@ -326,6 +346,7 @@ token_error_create (const char *message)
 token_t
 scan_token ()
 {
+  ignore_whitespace ();
   scan.start = scan.current;
 
   if (*scan.current == '\0')
