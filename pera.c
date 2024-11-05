@@ -265,12 +265,94 @@ run (vm_t *vm)
     }
 }
 
-result_t
-interpret (vm_t *vm, block_t *block)
+// result_t
+// interpret (vm_t *vm, block_t *block)
+// {
+//   vm->block = *block;
+//   vm->pc = vm->block.code;
+//   return run (vm);
+// }
+
+void
+compile (const char *source)
 {
-  vm->block = *block;
-  vm->pc = vm->block.code;
-  return run (vm);
+}
+
+result_t
+interpret (char *source)
+{
+  compile (source);
+  return RESULT_OK;
+};
+
+static void
+repl ()
+{
+  char line[1024];
+  while (1)
+    {
+      printf (": ");
+
+      if (!fgets (line, sizeof (line), stdin))
+        {
+          printf ("\n");
+          break;
+        }
+
+      interpret (line);
+    }
+}
+
+static char *
+read (const char *path)
+{
+  FILE *file = fopen (path, "rb");
+  if (file == NULL)
+    {
+      fprintf (stderr, "Couldn't open '%s'\n", path);
+      exit (1);
+    }
+
+  fseek (file, 0, SEEK_END);
+  size_t size = ftell (file);
+  rewind (file);
+
+  char *buffer = malloc (size - 1);
+  if (buffer == NULL)
+    {
+      fprintf (stderr, "Out of memory\n");
+      exit (1);
+    }
+  size_t bytes = fread (buffer, sizeof (char), size, file);
+  if (bytes < size)
+    {
+      fprintf (stderr, "Read error\n");
+      exit (1);
+    }
+  buffer[bytes] = '\0';
+
+  fclose (file);
+  return buffer;
+}
+
+static void
+run_file (const char *path)
+{
+  char *source = read (path);
+  result_t result = interpret (source);
+  free (source);
+
+  switch (result)
+    {
+    case RESULT_OK:
+      break;
+    case RESULT_COMPILE_ERROR:
+      printf ("Compile error\n");
+      exit (1);
+    case RESULT_RUNTIME_ERROR:
+      printf ("Runtime error\n");
+      exit (1);
+    }
 }
 
 void
@@ -284,26 +366,21 @@ init_message ()
 /* MAIN */
 
 int
-main (void)
+main (int argc, const char *argv[])
 {
   vm_t vm;
-  block_t *block;
+  vm_new (&vm);
 
   init_message ();
-
-  vm_new (&vm);
-  block = &vm.block;
-
-  block_push (block, OP_CONSTANT);
-  block_push (block, block_add_constant (block, 1));
-  block_push (block, OP_CONSTANT);
-  block_push (block, block_add_constant (block, 2.3));
-  block_push (block, OP_ADD);
-  block_push (block, OP_NEG);
-  block_push (block, OP_RETURN);
-  disassemble (block);
-
-  interpret (&vm, block);
+  if (argc == 1)
+    repl ();
+  else if (argc == 2)
+    run_file (argv[1]);
+  else
+    {
+      fprintf (stderr, "Usage: pera [file_path]\n");
+      exit (1);
+    }
 
   vm_free (&vm);
   return 0;
