@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define DEBUG
 #define STACK_SIZE 256
@@ -26,6 +27,31 @@ typedef enum
   RESULT_COMPILE_ERROR,
   RESULT_RUNTIME_ERROR,
 } result_t;
+
+typedef enum
+{
+  TOKEN_LPAREN,
+  TOKEN_RPAREN,
+  TOKEN_WORD,
+  TOKEN_NUMBER,
+  TOKEN_END,
+  TOKEN_ERROR,
+} token_type_t;
+
+typedef struct
+{
+  token_type_t type;
+  const char *start;
+  int length;
+} token_t;
+
+typedef struct
+{
+  const char *start;
+  const char *current;
+} scan_t;
+
+scan_t scan;
 
 typedef struct
 {
@@ -274,8 +300,54 @@ run (vm_t *vm)
 // }
 
 void
+scan_new (const char *source)
+{
+  scan.start = source;
+  scan.current = source;
+}
+
+token_t
+token_create (token_type_t type)
+{
+  token_t token = { .type = type,
+                    .start = scan.start,
+                    .length = scan.current - scan.start };
+  return token;
+}
+
+token_t
+token_error_create (const char *message)
+{
+  token_t token
+      = { .type = TOKEN_ERROR, .start = message, .length = strlen (message) };
+  return token;
+}
+
+token_t
+scan_token ()
+{
+  scan.start = scan.current;
+
+  if (*scan.current == '\0')
+    return token_create (TOKEN_END);
+
+  return token_error_create ("Unexpected character");
+}
+
+void
 compile (const char *source)
 {
+  scan_new (source);
+  while (1)
+    {
+      token_t token = scan_token ();
+      printf ("%d '%.*s'\n", token.type, token.length, token.start);
+
+      if (token.type == TOKEN_END)
+        break;
+      if (token.type == TOKEN_ERROR)
+        exit (1);
+    }
 }
 
 result_t
