@@ -331,6 +331,15 @@ scan_token ()
   if (*scan.current == '\0')
     return token_create (TOKEN_END);
 
+  char c = *scan.current++;
+  switch (c)
+    {
+    case '(':
+      return token_create (TOKEN_LPAREN);
+    case ')':
+      return token_create (TOKEN_RPAREN);
+    }
+
   return token_error_create ("Unexpected character");
 }
 
