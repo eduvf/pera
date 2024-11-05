@@ -36,7 +36,6 @@ typedef enum
   TOKEN_WORD,
   TOKEN_NUMBER,
   TOKEN_END,
-  TOKEN_ERROR,
 } token_type_t;
 
 typedef struct
@@ -341,14 +340,6 @@ token_create (token_type_t type)
 }
 
 token_t
-token_error_create (const char *message)
-{
-  token_t token
-      = { .type = TOKEN_ERROR, .start = message, .length = strlen (message) };
-  return token;
-}
-
-token_t
 scan_token ()
 {
   ignore_whitespace ();
@@ -370,8 +361,6 @@ scan_token ()
     scan.current++;
 
   return token_create (TOKEN_WORD);
-
-  // return token_error_create ("Unexpected character");
 }
 
 void
@@ -385,8 +374,6 @@ compile (const char *source)
 
       if (token.type == TOKEN_END)
         break;
-      if (token.type == TOKEN_ERROR)
-        exit (1);
     }
 }
 
