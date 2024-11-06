@@ -339,6 +339,9 @@ token_create (token_type_t type)
   token_t token = { .type = type,
                     .start = scan.start,
                     .length = scan.current - scan.start };
+#ifdef DEBUG
+  printf ("%d '%.*s'\n", token.type, token.length, token.start);
+#endif
   return token;
 }
 
@@ -367,13 +370,45 @@ scan_token ()
 }
 
 bool
+expression (token_t token, block_t *block)
+{
+  if (token.type == TOKEN_RPAREN)
+    {
+      fprintf (stderr, "Unexpected ')'\n");
+      return false;
+    }
+  if (token.type == TOKEN_LPAREN)
+    {
+      do
+        {
+          token = scan_token ();
+          if (token.type == TOKEN_RPAREN || token.type == TOKEN_END)
+            break;
+          if (!expression (token, block))
+            return false;
+        }
+      while (1);
+
+      if (token.type != TOKEN_RPAREN)
+        {
+          fprintf (stderr, "Missing ')'\n");
+          return false;
+        }
+      return true;
+    }
+  return true;
+}
+
+bool
 compile (const char *source, block_t *block)
 {
   scan_new (source);
   while (1)
     {
       token_t token = scan_token ();
-      printf ("%d '%.*s'\n", token.type, token.length, token.start);
+
+      if (!expression (token, block))
+        return false;
 
       if (token.type == TOKEN_END)
         break;
