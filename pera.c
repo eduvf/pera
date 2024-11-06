@@ -51,8 +51,6 @@ typedef struct
   const char *current;
 } scan_t;
 
-scan_t scan;
-
 typedef struct
 {
   int length;
@@ -75,6 +73,11 @@ typedef struct
   value_t stack[STACK_SIZE];
   value_t *top;
 } vm_t;
+
+/* GLOBALS */
+
+scan_t scan;
+vm_t vm;
 
 /* ARRAY FUNCTIONS */
 
@@ -363,8 +366,8 @@ scan_token ()
   return token_create (TOKEN_WORD);
 }
 
-void
-compile (const char *source)
+bool
+compile (const char *source, block_t *block)
 {
   scan_new (source);
   while (1)
@@ -375,13 +378,21 @@ compile (const char *source)
       if (token.type == TOKEN_END)
         break;
     }
+  return false;
 }
 
 result_t
 interpret (char *source)
 {
-  compile (source);
-  return RESULT_OK;
+  result_t result;
+
+  if (!compile (source, &vm.block))
+    return RESULT_COMPILE_ERROR;
+
+  vm.pc = vm.block.code;
+  result = run (&vm);
+
+  return result;
 };
 
 static void
@@ -467,7 +478,6 @@ init_message ()
 int
 main (int argc, const char *argv[])
 {
-  vm_t vm;
   vm_new (&vm);
 
   init_message ();
