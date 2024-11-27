@@ -379,6 +379,23 @@ expression (token_t token, block_t *block)
     }
   if (token.type == TOKEN_LPAREN)
     {
+      token_t first_token = scan_token ();
+
+      if (first_token.type == TOKEN_RPAREN)
+        return true;
+
+      if (first_token.type == TOKEN_END)
+        {
+          fprintf (stderr, "Missing ')'\n");
+          return false;
+        }
+
+      if (first_token.type != TOKEN_WORD)
+        {
+          fprintf (stderr, "Expression must start with a word\n");
+          return false;
+        }
+
       do
         {
           token = scan_token ();
