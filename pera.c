@@ -339,9 +339,9 @@ token_create (token_type_t type)
   token_t token = { .type = type,
                     .start = scan.start,
                     .length = scan.current - scan.start };
-#ifdef DEBUG
-  printf ("%d '%.*s'\n", token.type, token.length, token.start);
-#endif
+  // #ifdef DEBUG
+  //   printf ("%d '%.*s'\n", token.type, token.length, token.start);
+  // #endif
   return token;
 }
 
@@ -367,6 +367,14 @@ scan_token ()
     scan.current++;
 
   return token_create (TOKEN_WORD);
+}
+
+void
+emit_word (token_t token, block_t *block)
+{
+#ifdef DEBUG
+  printf ("emit byte '%.*s'\n", token.length, token.start);
+#endif
 }
 
 bool
@@ -406,6 +414,8 @@ expression (token_t token, block_t *block)
         }
       while (1);
 
+      emit_word (first_token, block);
+
       if (token.type != TOKEN_RPAREN)
         {
           fprintf (stderr, "Missing ')'\n");
@@ -413,7 +423,16 @@ expression (token_t token, block_t *block)
         }
       return true;
     }
-  return true;
+  if (token.type == TOKEN_WORD)
+    {
+      emit_word (token, block);
+      return true;
+    }
+  if (token.type == TOKEN_END)
+    return true;
+
+  fprintf (stderr, "Unrecognized token\n");
+  return false;
 }
 
 bool
