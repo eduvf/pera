@@ -20,6 +20,7 @@ typedef enum
   OP_DIV,
   OP_MOD,
   OP_RETURN,
+  OP_ERROR,
 } opcode_t;
 
 typedef enum
@@ -369,6 +370,28 @@ scan_token ()
   return token_create (TOKEN_WORD);
 }
 
+opcode_t
+is_token_op (token_t token)
+{
+  if (token.length == 1)
+    {
+      switch (*token.start)
+        {
+        case '+':
+          return OP_ADD;
+        case '-':
+          return OP_SUB;
+        case '*':
+          return OP_MUL;
+        case '/':
+          return OP_DIV;
+        case '%':
+          return OP_MOD;
+        }
+    }
+  return OP_ERROR;
+}
+
 void
 emit_word (token_t token, block_t *block)
 {
@@ -415,6 +438,12 @@ expression (token_t token, block_t *block)
       while (1);
 
       emit_word (first_token, block);
+
+#ifdef DEBUG
+      opcode_t op = is_token_op (first_token);
+      if (op != OP_ERROR)
+        printf ("op: %d\n", op);
+#endif
 
       if (token.type != TOKEN_RPAREN)
         {
