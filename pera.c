@@ -392,12 +392,23 @@ is_token_op (token_t token)
   return OP_ERROR;
 }
 
-void
+bool
 emit_word (token_t token, block_t *block)
 {
+  opcode_t op = is_token_op (token);
+  if (op == OP_ERROR)
+    {
+      fprintf (stderr, "Unrecognized word '%.*s'\n", token.length,
+               token.start);
+      return false;
+    }
+
+  block_push (block, op);
+
 #ifdef DEBUG
   printf ("emit byte '%.*s'\n", token.length, token.start);
 #endif
+  return true;
 }
 
 bool
@@ -437,13 +448,8 @@ expression (token_t token, block_t *block)
         }
       while (1);
 
-      emit_word (first_token, block);
-
-#ifdef DEBUG
-      opcode_t op = is_token_op (first_token);
-      if (op != OP_ERROR)
-        printf ("op: %d\n", op);
-#endif
+      if (!emit_word (first_token, block))
+        return false;
 
       if (token.type != TOKEN_RPAREN)
         {
@@ -454,7 +460,8 @@ expression (token_t token, block_t *block)
     }
   if (token.type == TOKEN_WORD)
     {
-      emit_word (token, block);
+      if (!emit_word (token, block))
+        return false;
       return true;
     }
   if (token.type == TOKEN_END)
@@ -478,7 +485,7 @@ compile (const char *source, block_t *block)
       if (token.type == TOKEN_END)
         break;
     }
-  return false;
+  return false; // TODO: change to true to execute compiled code
 }
 
 result_t
