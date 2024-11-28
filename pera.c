@@ -516,10 +516,12 @@ compile (const char *source, block_t *block)
       if (!expression (token, block))
         return false;
 
+      block_push (block, OP_RETURN);
+
       if (token.type == TOKEN_END)
         break;
     }
-  return false; // TODO: change to true to execute compiled code
+  return true;
 }
 
 result_t
