@@ -322,6 +322,23 @@ is_word (char c)
   return c != '(' && c != ')' && !is_whitespace (c);
 }
 
+bool
+is_digit (char c)
+{
+  return '0' <= c && c <= '9';
+}
+
+bool
+is_number (const char *word_start, const char *word_end)
+{
+  const char *c = word_start;
+
+  while (is_digit (*c) && c < word_end)
+    c++;
+
+  return c == word_end;
+}
+
 void
 ignore_whitespace ()
 {
@@ -366,6 +383,9 @@ scan_token ()
 
   while (is_word (*scan.current))
     scan.current++;
+
+  if (is_number (scan.start, scan.current))
+    return token_create (TOKEN_NUMBER);
 
   return token_create (TOKEN_WORD);
 }
@@ -462,6 +482,11 @@ expression (token_t token, block_t *block)
     {
       if (!emit_word (token, block))
         return false;
+      return true;
+    }
+  if (token.type == TOKEN_NUMBER)
+    {
+      printf ("emit number '%.*s'\n", token.length, token.start);
       return true;
     }
   if (token.type == TOKEN_END)
