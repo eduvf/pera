@@ -431,6 +431,15 @@ emit_word (token_t token, block_t *block)
   return true;
 }
 
+void
+emit_number (token_t token, block_t *block)
+{
+  double n = strtod (token.start, NULL);
+
+  block_push (block, OP_CONSTANT);
+  block_push (block, block_add_constant (block, n));
+}
+
 bool
 expression (token_t token, block_t *block)
 {
@@ -486,7 +495,7 @@ expression (token_t token, block_t *block)
     }
   if (token.type == TOKEN_NUMBER)
     {
-      printf ("emit number '%.*s'\n", token.length, token.start);
+      emit_number (token, block);
       return true;
     }
   if (token.type == TOKEN_END)
