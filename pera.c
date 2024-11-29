@@ -450,7 +450,6 @@ emit_number (token_t token, block_t *block)
 {
   double n = strtod (token.start, NULL);
 
-  block_push (block, OP_CONSTANT);
   block_push_constant (block, n);
 }
 
