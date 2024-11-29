@@ -546,6 +546,10 @@ interpret (char *source)
   if (!compile (source, &vm.block))
     return RESULT_COMPILE_ERROR;
 
+#ifdef DEBUG
+  disassemble (&vm.block);
+#endif
+
   vm.pc = vm.block.code;
   result = run (&vm);
 
