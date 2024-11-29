@@ -137,11 +137,25 @@ block_push (block_t *block, uint8_t byte)
   block->length++;
 }
 
-uint8_t
+int
 block_add_constant (block_t *block, value_t value)
 {
   array_push (&block->constants, value);
   return block->constants.length - 1;
+}
+
+void
+block_push_constant (block_t *block, value_t value)
+{
+  int constant = block_add_constant (block, value);
+  if (constant > UINT8_MAX)
+    {
+      fprintf (stderr, "Too many constants in block.\n");
+      exit (1);
+    }
+
+  block_push (block, OP_CONSTANT);
+  block_push (block, constant);
 }
 
 void
@@ -437,7 +451,7 @@ emit_number (token_t token, block_t *block)
   double n = strtod (token.start, NULL);
 
   block_push (block, OP_CONSTANT);
-  block_push (block, block_add_constant (block, n));
+  block_push_constant (block, n);
 }
 
 bool
