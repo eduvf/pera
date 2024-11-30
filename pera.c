@@ -8,7 +8,22 @@
 #define DEBUG
 #define STACK_SIZE 256
 
-typedef double value_t;
+typedef enum
+{
+  TYPE_NIL,
+  TYPE_BOOL,
+  TYPE_NUMBER,
+} value_type_t;
+
+typedef struct
+{
+  value_type_t type;
+  union
+  {
+    bool boolean;
+    double number;
+  } as;
+} value_t;
 
 typedef enum
 {
@@ -86,8 +101,8 @@ void
 array_new (array_t *array)
 {
   array->length = 0;
-  array->capacity = 8;
-  array->values = malloc (8);
+  array->capacity = 8 * sizeof (value_t);
+  array->values = malloc (8 * sizeof (value_t));
 }
 
 void
@@ -117,8 +132,8 @@ void
 block_new (block_t *block)
 {
   block->length = 0;
-  block->capacity = 8;
-  block->code = malloc (8);
+  block->capacity = 8 /* bytes */;
+  block->code = malloc (8 /* bytes */);
   array_new (&block->constants);
 }
 
@@ -209,7 +224,7 @@ disassemble_operation (block_t *block, size_t offset)
     case OP_CONSTANT:
       constant = block->code[offset + 1];
       value = block->constants.values[constant];
-      printf ("CONSTANT %02x %g\n", constant, value);
+      printf ("CONSTANT %02x %g\n", constant, value.as.number);
       return 2;
     case OP_NEG:
       printf ("NEG\n");
@@ -250,12 +265,19 @@ disassemble (block_t *block)
 
 /* INTERPRET */
 
+value_t
+value_from_number (double n)
+{
+  value_t v = { TYPE_NUMBER, { .number = n } };
+  return v;
+}
+
 #define BINARY_OP(o)                                                          \
   do                                                                          \
     {                                                                         \
-      double b = pop (vm);                                                    \
-      double a = pop (vm);                                                    \
-      push (vm, a o b);                                                       \
+      double b = pop (vm).as.number;                                          \
+      double a = pop (vm).as.number;                                          \
+      push (vm, value_from_number (a o b));                                   \
     }                                                                         \
   while (0)
 
@@ -267,9 +289,10 @@ run (vm_t *vm)
 
   while (1)
     {
+      puts ("hi");
 #ifdef DEBUG
       for (value_t *v = vm->stack; v < vm->top; v++)
-        printf ("[%g]", *v);
+        printf ("[%g]", v->as.number);
       printf ("\n");
       disassemble_operation (&vm->block, (int)(vm->pc - vm->block.code));
 #endif
@@ -277,11 +300,11 @@ run (vm_t *vm)
         {
         case OP_CONSTANT:
           v = vm->block.constants.values[*vm->pc++];
-          printf ("%g\n", v);
+          printf ("%g\n", v.as.number);
           push (vm, v);
           break;
         case OP_NEG:
-          push (vm, -pop (vm));
+          push (vm, value_from_number (-pop (vm).as.number));
           break;
         case OP_ADD:
           BINARY_OP (+);
@@ -297,13 +320,13 @@ run (vm_t *vm)
           break;
         case OP_MOD:
           {
-            double b = pop (vm);
-            double a = pop (vm);
-            push (vm, fmod (a, b));
+            double b = pop (vm).as.number;
+            double a = pop (vm).as.number;
+            push (vm, value_from_number (fmod (a, b)));
             break;
           }
         case OP_RETURN:
-          printf ("%g\n", pop (vm));
+          printf ("%g\n", pop (vm).as.number);
           return RESULT_OK;
         }
     }
@@ -450,7 +473,7 @@ emit_number (token_t token, block_t *block)
 {
   double n = strtod (token.start, NULL);
 
-  block_push_constant (block, n);
+  block_push_constant (block, value_from_number (n));
 }
 
 bool
