@@ -272,9 +272,23 @@ value_from_number (double n)
   return v;
 }
 
+bool
+check_top_type (vm_t *vm, value_type_t type)
+{
+  return vm->top[-1].type == type;
+}
+
+bool
+check_top_2_type (vm_t *vm, value_type_t type)
+{
+  return vm->top[-2].type == type && vm->top[-1].type == type;
+}
+
 #define BINARY_OP(o)                                                          \
   do                                                                          \
     {                                                                         \
+      if (!check_top_2_type (vm, TYPE_NUMBER))                                \
+        return RESULT_RUNTIME_ERROR;                                          \
       double b = pop (vm).as.number;                                          \
       double a = pop (vm).as.number;                                          \
       push (vm, value_from_number (a o b));                                   \
@@ -289,7 +303,6 @@ run (vm_t *vm)
 
   while (1)
     {
-      puts ("hi");
 #ifdef DEBUG
       for (value_t *v = vm->stack; v < vm->top; v++)
         printf ("[%g]", v->as.number);
@@ -304,6 +317,8 @@ run (vm_t *vm)
           push (vm, v);
           break;
         case OP_NEG:
+          if (!check_top_type (vm, TYPE_NUMBER))
+            return RESULT_RUNTIME_ERROR;
           push (vm, value_from_number (-pop (vm).as.number));
           break;
         case OP_ADD:
@@ -320,6 +335,8 @@ run (vm_t *vm)
           break;
         case OP_MOD:
           {
+            if (!check_top_2_type (vm, TYPE_NUMBER))
+              return RESULT_RUNTIME_ERROR;
             double b = pop (vm).as.number;
             double a = pop (vm).as.number;
             push (vm, value_from_number (fmod (a, b)));
