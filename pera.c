@@ -296,6 +296,23 @@ check_top_2_type (vm_t *vm, value_type_t type)
   return vm->top[-2].type == type && vm->top[-1].type == type;
 }
 
+void
+print_value (value_t v)
+{
+  switch (v.type)
+    {
+    case TYPE_NIL:
+      printf ("nil");
+      break;
+    case TYPE_BOOL:
+      printf (v.as.boolean ? "true" : "false");
+      break;
+    case TYPE_NUMBER:
+      printf ("%g", v.as.number);
+      break;
+    }
+}
+
 #define BINARY_OP(o)                                                          \
   do                                                                          \
     {                                                                         \
@@ -317,7 +334,11 @@ run (vm_t *vm)
     {
 #ifdef DEBUG
       for (value_t *v = vm->stack; v < vm->top; v++)
-        printf ("[%g]", v->as.number);
+        {
+          printf ("[");
+          print_value (*v);
+          printf ("]");
+        }
       printf ("\n");
       disassemble_operation (&vm->block, (int)(vm->pc - vm->block.code));
 #endif
@@ -364,7 +385,8 @@ run (vm_t *vm)
             break;
           }
         case OP_RETURN:
-          printf ("%g\n", pop (vm).as.number);
+          print_value (pop (vm));
+          printf ("\n");
           return RESULT_OK;
         }
     }
