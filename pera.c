@@ -28,6 +28,8 @@ typedef struct
 typedef enum
 {
   OP_NIL,
+  OP_TRUE,
+  OP_FALSE,
   OP_CONSTANT,
   OP_NEG,
   OP_ADD,
@@ -225,6 +227,12 @@ disassemble_operation (block_t *block, size_t offset)
     case OP_NIL:
       printf ("NIL\n");
       return 1;
+    case OP_TRUE:
+      printf ("TRUE\n");
+      return 1;
+    case OP_FALSE:
+      printf ("FALSE\n");
+      return 1;
     case OP_CONSTANT:
       constant = block->code[offset + 1];
       value = block->constants.values[constant];
@@ -317,6 +325,12 @@ run (vm_t *vm)
         {
         case OP_NIL:
           push (vm, (value_t){ .type = TYPE_NIL });
+          break;
+        case OP_TRUE:
+          push (vm, (value_t){ .type = TYPE_BOOL, .as = true });
+          break;
+        case OP_FALSE:
+          push (vm, (value_t){ .type = TYPE_BOOL, .as = false });
           break;
         case OP_CONSTANT:
           v = vm->block.constants.values[*vm->pc++];
@@ -472,6 +486,10 @@ is_token_op (token_t token)
     }
   if (0 == strncmp ("nil", token.start, 3))
     return OP_NIL;
+  if (0 == strncmp ("true", token.start, 4))
+    return OP_TRUE;
+  if (0 == strncmp ("false", token.start, 5))
+    return OP_FALSE;
 
   return OP_ERROR;
 }
