@@ -465,6 +465,15 @@ scan_token ()
   return token_create (TOKEN_WORD);
 }
 
+bool
+is_token_string (token_t token, const char *str)
+{
+  int len = strlen (str);
+  bool same_len = token.length == len;
+  bool same_str = 0 == strncmp (str, token.start, len);
+  return same_str && same_len;
+}
+
 opcode_t
 is_token_op (token_t token)
 {
@@ -484,11 +493,11 @@ is_token_op (token_t token)
           return OP_MOD;
         }
     }
-  if (0 == strncmp ("nil", token.start, 3))
+  if (is_token_string (token, "nil"))
     return OP_NIL;
-  if (0 == strncmp ("true", token.start, 4))
+  if (is_token_string (token, "true"))
     return OP_TRUE;
-  if (0 == strncmp ("false", token.start, 5))
+  if (is_token_string (token, "false"))
     return OP_FALSE;
 
   return OP_ERROR;
