@@ -38,6 +38,7 @@ typedef enum
   OP_DIV,
   OP_MOD,
   OP_NOT,
+  OP_EQ,
   OP_RETURN,
   OP_ERROR,
 } opcode_t;
@@ -260,6 +261,9 @@ disassemble_operation (block_t *block, size_t offset)
     case OP_NOT:
       printf ("NOT\n");
       return 1;
+    case OP_EQ:
+      printf ("EQ\n");
+      return 1;
     case OP_RETURN:
       printf ("RETURN\n");
       return 1;
@@ -408,6 +412,15 @@ run (vm_t *vm)
                                  .as = !value_to_boolean (pop (vm)) });
             break;
           }
+        case OP_EQ:
+          {
+            if (!check_top_2_type (vm, TYPE_NUMBER))
+              return RESULT_RUNTIME_ERROR;
+            double b = pop (vm).as.number;
+            double a = pop (vm).as.number;
+            push (vm, (value_t){ .type = TYPE_BOOL, .as = a == b });
+            break;
+          }
         case OP_RETURN:
           print_value (pop (vm));
           printf ("\n");
@@ -537,6 +550,8 @@ is_token_op (token_t token)
           return OP_DIV;
         case '%':
           return OP_MOD;
+        case '=':
+          return OP_EQ;
         }
     }
   if (is_token_string (token, "not"))
