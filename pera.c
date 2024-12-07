@@ -37,6 +37,7 @@ typedef enum
   OP_MUL,
   OP_DIV,
   OP_MOD,
+  OP_NOT,
   OP_RETURN,
   OP_ERROR,
 } opcode_t;
@@ -256,6 +257,9 @@ disassemble_operation (block_t *block, size_t offset)
     case OP_MOD:
       printf ("MOD\n");
       return 1;
+    case OP_NOT:
+      printf ("NOT\n");
+      return 1;
     case OP_RETURN:
       printf ("RETURN\n");
       return 1;
@@ -282,6 +286,20 @@ value_from_number (double n)
 {
   value_t v = { TYPE_NUMBER, { .number = n } };
   return v;
+}
+
+bool
+value_to_boolean (value_t v)
+{
+  switch (v.type)
+    {
+    case TYPE_NIL:
+      return false;
+    case TYPE_BOOL:
+      return v.as.boolean;
+    case TYPE_NUMBER:
+      return v.as.number != 0;
+    }
 }
 
 bool
@@ -382,6 +400,12 @@ run (vm_t *vm)
             double b = pop (vm).as.number;
             double a = pop (vm).as.number;
             push (vm, value_from_number (fmod (a, b)));
+            break;
+          }
+        case OP_NOT:
+          {
+            push (vm, (value_t){ .type = TYPE_BOOL,
+                                 .as = !value_to_boolean (pop (vm)) });
             break;
           }
         case OP_RETURN:
@@ -515,6 +539,8 @@ is_token_op (token_t token)
           return OP_MOD;
         }
     }
+  if (is_token_string (token, "not"))
+    return OP_NOT;
   if (is_token_string (token, "nil"))
     return OP_NIL;
   if (is_token_string (token, "true"))
