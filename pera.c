@@ -436,14 +436,6 @@ run (vm_t *vm)
     }
 }
 
-// result_t
-// interpret (vm_t *vm, block_t *block)
-// {
-//   vm->block = *block;
-//   vm->pc = vm->block.code;
-//   return run (vm);
-// }
-
 void
 scan_new (const char *source)
 {
@@ -498,9 +490,6 @@ token_create (token_type_t type)
   token_t token = { .type = type,
                     .start = scan.start,
                     .length = scan.current - scan.start };
-  // #ifdef DEBUG
-  //   printf ("%d '%.*s'\n", token.type, token.length, token.start);
-  // #endif
   return token;
 }
 
