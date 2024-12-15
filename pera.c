@@ -659,7 +659,10 @@ expression (token_t token, block_t *block)
       return true;
     }
   if (token.type == TOKEN_END)
-    return true;
+    {
+      block_push (block, OP_RETURN);
+      return true;
+    }
 
   fprintf (stderr, "Unrecognized token\n");
   return false;
@@ -675,8 +678,6 @@ compile (const char *source, block_t *block)
 
       if (!expression (token, block))
         return false;
-
-      block_push (block, OP_RETURN);
 
       if (token.type == TOKEN_END)
         break;
