@@ -353,7 +353,7 @@ print_value (value_t v)
     }                                                                         \
   while (0)
 
-static result_t
+result_t
 run (vm_t *vm)
 {
   uint8_t op;
@@ -703,7 +703,7 @@ interpret (char *source)
   return result;
 };
 
-static void
+void
 repl ()
 {
   char line[1024];
@@ -722,7 +722,7 @@ repl ()
     }
 }
 
-static char *
+char *
 read (const char *path)
 {
   FILE *file = fopen (path, "rb");
@@ -754,7 +754,7 @@ read (const char *path)
   return buffer;
 }
 
-static void
+void
 run_file (const char *path)
 {
   char *source = read (path);
