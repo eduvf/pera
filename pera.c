@@ -201,6 +201,13 @@ vm_free (vm_t *vm)
 }
 
 void
+vm_reset (vm_t *vm)
+{
+  vm_free (vm);
+  vm_new (vm);
+}
+
+void
 push (vm_t *vm, value_t value)
 {
   *vm->top = value;
@@ -710,6 +717,7 @@ repl ()
         }
 
       interpret (line);
+      vm_reset (&vm);
     }
 }
 
