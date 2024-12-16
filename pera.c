@@ -618,70 +618,73 @@ emit_number (token_t token, block_t *block)
 bool
 expression (token_t token, block_t *block)
 {
-  if (token.type == TOKEN_RPAREN)
+  switch (token.type)
     {
-      fprintf (stderr, "Unexpected ')'\n");
-      return false;
-    }
-  if (token.type == TOKEN_LPAREN)
-    {
-      token_t first_token = scan_token ();
+    case TOKEN_RPAREN:
+      {
+        fprintf (stderr, "Unexpected ')'\n");
+        return false;
+      }
+    case TOKEN_LPAREN:
+      {
+        token_t first_token = scan_token ();
 
-      if (first_token.type == TOKEN_RPAREN)
-        return true;
+        if (first_token.type == TOKEN_RPAREN)
+          return true;
 
-      if (first_token.type == TOKEN_END)
-        {
-          fprintf (stderr, "Missing ')'\n");
-          return false;
-        }
-
-      if (first_token.type != TOKEN_WORD)
-        {
-          fprintf (stderr, "Expression must start with a word\n");
-          return false;
-        }
-
-      do
-        {
-          token = scan_token ();
-          if (token.type == TOKEN_RPAREN || token.type == TOKEN_END)
-            break;
-          if (!expression (token, block))
+        if (first_token.type == TOKEN_END)
+          {
+            fprintf (stderr, "Missing ')'\n");
             return false;
-        }
-      while (1);
+          }
 
-      if (!emit_word (first_token, block))
-        return false;
+        if (first_token.type != TOKEN_WORD)
+          {
+            fprintf (stderr, "Expression must start with a word\n");
+            return false;
+          }
 
-      if (token.type != TOKEN_RPAREN)
-        {
-          fprintf (stderr, "Missing ')'\n");
+        do
+          {
+            token = scan_token ();
+            if (token.type == TOKEN_RPAREN || token.type == TOKEN_END)
+              break;
+            if (!expression (token, block))
+              return false;
+          }
+        while (1);
+
+        if (!emit_word (first_token, block))
           return false;
-        }
-      return true;
-    }
-  if (token.type == TOKEN_WORD)
-    {
-      if (!emit_word (token, block))
-        return false;
-      return true;
-    }
-  if (token.type == TOKEN_NUMBER)
-    {
-      emit_number (token, block);
-      return true;
-    }
-  if (token.type == TOKEN_STRING)
-    {
-      printf ("string '%.*s'\n", token.length, token.start);
-      return true;
-    }
-  if (token.type == TOKEN_END)
-    {
-      block_push (block, OP_RETURN);
-      return true;
+
+        if (token.type != TOKEN_RPAREN)
+          {
+            fprintf (stderr, "Missing ')'\n");
+            return false;
+          }
+        return true;
+      }
+    case TOKEN_WORD:
+      {
+        if (!emit_word (token, block))
+          return false;
+        return true;
+      }
+    case TOKEN_NUMBER:
+      {
+        emit_number (token, block);
+        return true;
+      }
+    case TOKEN_STRING:
+      {
+        printf ("string '%.*s'\n", token.length, token.start);
+        return true;
+      }
+    case TOKEN_END:
+      {
+        block_push (block, OP_RETURN);
+        return true;
+      }
     }
 
   fprintf (stderr, "Unrecognized token\n");
