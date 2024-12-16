@@ -56,6 +56,7 @@ typedef enum
   TOKEN_RPAREN,
   TOKEN_WORD,
   TOKEN_NUMBER,
+  TOKEN_STRING,
   TOKEN_END,
 } token_type_t;
 
@@ -494,6 +495,29 @@ token_create (token_type_t type)
 }
 
 token_t
+token_create_string ()
+{
+  char p = '"';
+  char c;
+  token_t t;
+  while (1)
+    {
+      if ((c = *scan.current++) == '\0')
+        {
+          fprintf (stderr, "Missing quote in string");
+          exit (1);
+        }
+      if (p != '\\' && c == '"')
+        break;
+      p = c;
+    }
+  t = token_create (TOKEN_STRING);
+  t.start += 1;
+  t.length -= 2;
+  return t;
+}
+
+token_t
 scan_token ()
 {
   ignore_whitespace ();
@@ -509,6 +533,8 @@ scan_token ()
       return token_create (TOKEN_LPAREN);
     case ')':
       return token_create (TOKEN_RPAREN);
+    case '"':
+      return token_create_string ();
     }
 
   while (is_word (*scan.current))
@@ -645,6 +671,11 @@ expression (token_t token, block_t *block)
   if (token.type == TOKEN_NUMBER)
     {
       emit_number (token, block);
+      return true;
+    }
+  if (token.type == TOKEN_STRING)
+    {
+      printf ("string '%.*s'\n", token.length, token.start);
       return true;
     }
   if (token.type == TOKEN_END)
