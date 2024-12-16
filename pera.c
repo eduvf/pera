@@ -13,7 +13,25 @@ typedef enum
   TYPE_NIL,
   TYPE_BOOL,
   TYPE_NUMBER,
+  TYPE_OBJECT,
 } value_type_t;
+
+typedef enum
+{
+  OBJECT_STRING,
+} object_type_t;
+
+typedef struct
+{
+  object_type_t type;
+} object_t;
+
+typedef struct
+{
+  object_t object;
+  int length;
+  char *chars;
+} object_string_t;
 
 typedef struct
 {
@@ -22,6 +40,7 @@ typedef struct
   {
     bool boolean;
     double number;
+    object_t *object;
   } as;
 } value_t;
 
@@ -311,6 +330,8 @@ value_to_boolean (value_t v)
       return v.as.boolean;
     case TYPE_NUMBER:
       return v.as.number != 0;
+    case TYPE_OBJECT:
+      return true;
     }
 }
 
@@ -339,6 +360,13 @@ print_value (value_t v)
       break;
     case TYPE_NUMBER:
       printf ("%g", v.as.number);
+      break;
+    case TYPE_OBJECT:
+      switch (v.as.object->type)
+        {
+        case OBJECT_STRING:
+          printf ("string");
+        }
       break;
     }
 }
