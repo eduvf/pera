@@ -615,6 +615,14 @@ emit_number (token_t token, block_t *block)
   block_push_constant (block, value_from_number (n));
 }
 
+void
+emit_string (token_t token, block_t *block)
+{
+#ifdef DEBUG
+  printf ("string '%.*s'\n", token.length, token.start);
+#endif
+}
+
 bool
 expression (token_t token, block_t *block)
 {
@@ -677,7 +685,7 @@ expression (token_t token, block_t *block)
       }
     case TOKEN_STRING:
       {
-        printf ("string '%.*s'\n", token.length, token.start);
+        emit_string (token, block);
         return true;
       }
     case TOKEN_END:
