@@ -365,7 +365,11 @@ print_value (value_t v)
       switch (v.as.object->type)
         {
         case OBJECT_STRING:
-          printf ("string");
+          {
+            object_string_t *s = (object_string_t *)v.as.object;
+            printf ("\"%s\"", s->chars);
+            break;
+          }
         }
       break;
     }
@@ -643,9 +647,36 @@ emit_number (token_t token, block_t *block)
   block_push_constant (block, value_from_number (n));
 }
 
+object_string_t *
+allocate_string (char *chars, int length)
+{
+  object_t *o = malloc (sizeof (object_string_t));
+  o->type = OBJECT_STRING;
+  object_string_t *s = (object_string_t *)o;
+  s->length = length;
+  s->chars = chars;
+  return s;
+}
+
+object_string_t *
+copy_string (const char *chars, int length)
+{
+  char *to_heap = malloc ((length + 1) * sizeof (char));
+  memcpy (to_heap, chars, length);
+  to_heap[length] = '\0';
+  return allocate_string (to_heap, length);
+}
+
 void
 emit_string (token_t token, block_t *block)
 {
+  object_t o = {};
+  value_t v
+      = { .type = TYPE_OBJECT,
+          .as.object = (object_t *)copy_string (token.start, token.length) };
+
+  block_push_constant (block, v);
+
 #ifdef DEBUG
   printf ("string '%.*s'\n", token.length, token.start);
 #endif
