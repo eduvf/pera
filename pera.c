@@ -21,9 +21,10 @@ typedef enum
   OBJECT_STRING,
 } object_type_t;
 
-typedef struct
+typedef struct object
 {
   object_type_t type;
+  struct object *next;
 } object_t;
 
 typedef struct
@@ -114,6 +115,7 @@ typedef struct
   uint8_t *pc;
   value_t stack[STACK_SIZE];
   value_t *top;
+  object_t *objects;
 } vm_t;
 
 /* GLOBALS */
@@ -206,12 +208,42 @@ block_free (block_t *block)
   array_free (&block->constants);
 }
 
+/* GC FUNCTIONS */
+
+void
+free_object (object_t *object)
+{
+  switch (object->type)
+    {
+    case OBJECT_STRING:
+      {
+        object_string_t *string = (object_string_t *)object;
+        free (string->chars);
+        free (object);
+        break;
+      }
+    }
+}
+
+void
+free_objects ()
+{
+  object_t *o = vm.objects;
+  while (o != NULL)
+    {
+      object_t *next = o->next;
+      free_object (o);
+      o = next;
+    }
+}
+
 /* VM FUNCTIONS */
 
 void
 vm_new (vm_t *vm)
 {
   vm->top = vm->stack;
+  vm->objects = NULL;
   block_new (&vm->block);
 }
 
@@ -219,6 +251,7 @@ void
 vm_free (vm_t *vm)
 {
   block_free (&vm->block);
+  free_objects ();
 }
 
 void
@@ -249,6 +282,8 @@ allocate_string (char *chars, int length)
 {
   object_t *o = malloc (sizeof (object_string_t));
   o->type = OBJECT_STRING;
+  o->next = vm.objects;
+  vm.objects = o;
   object_string_t *s = (object_string_t *)o;
   s->length = length;
   s->chars = chars;
