@@ -31,7 +31,8 @@ typedef struct
 {
   object_t object;
   int length;
-  char *chars;
+  // char *chars;
+  char chars[];
 } object_string_t;
 
 typedef struct
@@ -218,7 +219,7 @@ free_object (object_t *object)
     case OBJECT_STRING:
       {
         object_string_t *string = (object_string_t *)object;
-        free (string->chars);
+        // free (string->chars);
         free (object);
         break;
       }
@@ -280,27 +281,39 @@ pop (vm_t *vm)
 object_string_t *
 allocate_string (char *chars, int length)
 {
-  object_t *o = malloc (sizeof (object_string_t));
+  object_string_t *s = malloc (sizeof (*s) + (length + 1) * sizeof (char));
+  object_t *o = (object_t *)s;
+
   o->type = OBJECT_STRING;
   o->next = vm.objects;
   vm.objects = o;
-  object_string_t *s = (object_string_t *)o;
+
   s->length = length;
-  s->chars = chars;
+  memcpy (s->chars, chars, length);
+  s->chars[length] = '\0';
   return s;
 }
 
 object_string_t *
-copy_string (const char *chars, int length)
+allocate_concat_string (char *chars_a, int len_a, char *chars_b, int len_b)
 {
-  char *to_heap = malloc ((length + 1) * sizeof (char));
-  memcpy (to_heap, chars, length);
-  to_heap[length] = '\0';
-  return allocate_string (to_heap, length);
+  int length = len_a + len_b;
+  object_string_t *s = malloc (sizeof (*s) + (length + 1) * sizeof (char));
+  object_t *o = (object_t *)s;
+
+  o->type = OBJECT_STRING;
+  o->next = vm.objects;
+  vm.objects = o;
+
+  s->length = length;
+  memcpy (s->chars, chars_a, len_a);
+  memcpy (s->chars + len_a, chars_b, len_b);
+  s->chars[length] = '\0';
+  return s;
 }
 
 object_string_t *
-take_string (char *chars, int length)
+copy_string (char *chars, int length)
 {
   return allocate_string (chars, length);
 }
@@ -545,13 +558,8 @@ run (vm_t *vm)
             object_string_t *b = (object_string_t *)pop (vm).as.object;
             object_string_t *a = (object_string_t *)pop (vm).as.object;
 
-            int len = a->length + b->length;
-            char *chars = malloc ((len + 1) * sizeof (char));
-            memcpy (chars, a->chars, a->length);
-            memcpy (chars + a->length, b->chars, b->length);
-            chars[len] = '\0';
-
-            object_t *o = (object_t *)take_string (chars, len);
+            object_t *o = (object_t *)allocate_concat_string (
+                a->chars, a->length, b->chars, b->length);
             push (vm, (value_t){ .type = TYPE_OBJECT, .as.object = o });
             break;
           }
@@ -746,9 +754,9 @@ emit_number (token_t token, block_t *block)
 void
 emit_string (token_t token, block_t *block)
 {
-  value_t v
-      = { .type = TYPE_OBJECT,
-          .as.object = (object_t *)copy_string (token.start, token.length) };
+  value_t v = { .type = TYPE_OBJECT,
+                .as.object = (object_t *)copy_string ((char *)token.start,
+                                                      token.length) };
 
   block_push_constant (block, v);
 
