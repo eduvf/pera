@@ -553,6 +553,7 @@ run (vm_t *vm)
 
             object_t *o = (object_t *)take_string (chars, len);
             push (vm, (value_t){ .type = TYPE_OBJECT, .as.object = o });
+            break;
           }
         case OP_RETURN:
           print_value (pop (vm));
