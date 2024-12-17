@@ -58,6 +58,7 @@ typedef enum
   OP_MOD,
   OP_NOT,
   OP_EQ,
+  OP_CONCAT,
   OP_RETURN,
   OP_ERROR,
 } opcode_t;
@@ -241,6 +242,34 @@ pop (vm_t *vm)
   return *vm->top;
 }
 
+/* STRING FUNCTIONS */
+
+object_string_t *
+allocate_string (char *chars, int length)
+{
+  object_t *o = malloc (sizeof (object_string_t));
+  o->type = OBJECT_STRING;
+  object_string_t *s = (object_string_t *)o;
+  s->length = length;
+  s->chars = chars;
+  return s;
+}
+
+object_string_t *
+copy_string (const char *chars, int length)
+{
+  char *to_heap = malloc ((length + 1) * sizeof (char));
+  memcpy (to_heap, chars, length);
+  to_heap[length] = '\0';
+  return allocate_string (to_heap, length);
+}
+
+object_string_t *
+take_string (char *chars, int length)
+{
+  return allocate_string (chars, length);
+}
+
 /* DEBUG */
 
 int
@@ -290,6 +319,9 @@ disassemble_operation (block_t *block, size_t offset)
       return 1;
     case OP_EQ:
       printf ("EQ\n");
+      return 1;
+    case OP_CONCAT:
+      printf ("OP_CONCAT\n");
       return 1;
     case OP_RETURN:
       printf ("RETURN\n");
@@ -345,6 +377,13 @@ bool
 check_top_2_type (vm_t *vm, value_type_t type)
 {
   return vm->top[-2].type == type && vm->top[-1].type == type;
+}
+
+bool
+check_top_2_object_type (vm_t *vm, object_type_t type)
+{
+  return vm->top[-2].as.object->type == type
+         && vm->top[-1].as.object->type == type;
 }
 
 void
@@ -460,6 +499,25 @@ run (vm_t *vm)
             double a = pop (vm).as.number;
             push (vm, (value_t){ .type = TYPE_BOOL, .as = a == b });
             break;
+          }
+        case OP_CONCAT:
+          {
+            if (!check_top_2_type (vm, TYPE_OBJECT))
+              return RESULT_RUNTIME_ERROR;
+            if (!check_top_2_object_type (vm, OBJECT_STRING))
+              return RESULT_RUNTIME_ERROR;
+
+            object_string_t *b = (object_string_t *)pop (vm).as.object;
+            object_string_t *a = (object_string_t *)pop (vm).as.object;
+
+            int len = a->length + b->length;
+            char *chars = malloc ((len + 1) * sizeof (char));
+            memcpy (chars, a->chars, a->length);
+            memcpy (chars + a->length, b->chars, b->length);
+            chars[len] = '\0';
+
+            object_t *o = (object_t *)take_string (chars, len);
+            push (vm, (value_t){ .type = TYPE_OBJECT, .as.object = o });
           }
         case OP_RETURN:
           print_value (pop (vm));
@@ -608,6 +666,8 @@ is_token_op (token_t token)
           return OP_EQ;
         }
     }
+  if (is_token_string (token, ".."))
+    return OP_CONCAT;
   if (is_token_string (token, "not"))
     return OP_NOT;
   if (is_token_string (token, "nil"))
@@ -647,30 +707,9 @@ emit_number (token_t token, block_t *block)
   block_push_constant (block, value_from_number (n));
 }
 
-object_string_t *
-allocate_string (char *chars, int length)
-{
-  object_t *o = malloc (sizeof (object_string_t));
-  o->type = OBJECT_STRING;
-  object_string_t *s = (object_string_t *)o;
-  s->length = length;
-  s->chars = chars;
-  return s;
-}
-
-object_string_t *
-copy_string (const char *chars, int length)
-{
-  char *to_heap = malloc ((length + 1) * sizeof (char));
-  memcpy (to_heap, chars, length);
-  to_heap[length] = '\0';
-  return allocate_string (to_heap, length);
-}
-
 void
 emit_string (token_t token, block_t *block)
 {
-  object_t o = {};
   value_t v
       = { .type = TYPE_OBJECT,
           .as.object = (object_t *)copy_string (token.start, token.length) };
