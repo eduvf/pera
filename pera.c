@@ -276,6 +276,17 @@ pop (vm_t *vm)
   return *vm->top;
 }
 
+/* TABLE FUNCTIONS */
+
+uint32_t
+hash_from_string (const char *string, int length)
+{
+  uint32_t hash = 2166136261u;
+  for (int i = 0; i < length; i++)
+    hash = (hash ^ (uint8_t)string[i]) * 16777619;
+  return hash;
+}
+
 /* STRING FUNCTIONS */
 
 object_string_t *
