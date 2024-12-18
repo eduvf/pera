@@ -31,6 +31,7 @@ typedef struct
 {
   object_t object;
   int length;
+  uint32_t hash;
   // char *chars;
   char chars[];
 } object_string_t;
@@ -302,6 +303,7 @@ allocate_string (char *chars, int length)
   s->length = length;
   memcpy (s->chars, chars, length);
   s->chars[length] = '\0';
+  s->hash = hash_from_string (s->chars, length);
   return s;
 }
 
@@ -320,6 +322,7 @@ allocate_concat_string (char *chars_a, int len_a, char *chars_b, int len_b)
   memcpy (s->chars, chars_a, len_a);
   memcpy (s->chars + len_a, chars_b, len_b);
   s->chars[length] = '\0';
+  s->hash = hash_from_string (s->chars, length);
   return s;
 }
 
