@@ -7,6 +7,7 @@
 
 #define DEBUG
 #define STACK_SIZE 256
+#define TABLE_LOAD 0.75
 
 typedef enum
 {
@@ -295,16 +296,22 @@ pop (vm_t *vm)
 /* TABLE FUNCTIONS */
 
 void
+fill_null_pairs (pair_t *pairs, int capacity)
+{
+  for (int i = 0; i < capacity; i++)
+    {
+      pairs[i].key = NULL;
+      pairs[i].value = (value_t){ .type = TYPE_NIL };
+    }
+}
+
+void
 table_new (object_table_t *table)
 {
   table->count = 0;
   table->capacity = 8;
   table->pairs = malloc (8 * sizeof (pair_t));
-  for (int i = 0; i < 8; i++)
-    {
-      table->pairs[i].key = NULL;
-      table->pairs[i].value = (value_t){ .type = TYPE_NIL };
-    }
+  fill_null_pairs (table->pairs, table->capacity);
 }
 
 pair_t *
@@ -320,10 +327,35 @@ table_get (object_table_t *table, object_string_t *key)
     }
 }
 
+void
+table_grow (object_table_t *table)
+{
+  int new_capacity = table->capacity * 2;
+  pair_t *new_pairs = malloc (new_capacity * sizeof (pair_t));
+  fill_null_pairs (new_pairs, new_capacity);
+
+  for (int i = 0; i < table->capacity; i++)
+    {
+      pair_t *pair = &table->pairs[i];
+      if (pair->key == NULL)
+        continue;
+
+      pair_t *dest_pair = table_get (table, pair->key);
+      dest_pair->key = pair->key;
+      dest_pair->value = pair->value;
+    }
+
+  free (table->pairs);
+
+  table->capacity = new_capacity;
+  table->pairs = new_pairs;
+}
+
 bool
 table_set (object_table_t *table, object_string_t *key, value_t value)
 {
-  // TODO: check size
+  if (table->count + 1 > table->capacity * TABLE_LOAD)
+    table_grow (table);
   pair_t *pair = table_get (table, key);
   bool is_new = pair->key == NULL;
   if (is_new)
