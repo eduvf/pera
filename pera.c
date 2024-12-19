@@ -297,8 +297,40 @@ void
 table_new (object_table_t *table)
 {
   table->count = 0;
-  table->capacity = 8 * sizeof (pair_t);
+  table->capacity = 8;
   table->pairs = malloc (8 * sizeof (pair_t));
+  for (int i = 0; i < 8; i++)
+    {
+      table->pairs[i].key = NULL;
+      table->pairs[i].value = (value_t){ .type = TYPE_NIL };
+    }
+}
+
+pair_t *
+table_get (object_table_t *table, object_string_t *key)
+{
+  uint32_t i = key->hash % table->capacity;
+  while (1)
+    {
+      pair_t *pair = &table->pairs[i];
+      if (pair->key == key || pair->key == NULL)
+        return pair;
+      i = (i + 1) % table->capacity;
+    }
+}
+
+bool
+table_set (object_table_t *table, object_string_t *key, value_t value)
+{
+  // TODO: check size
+  pair_t *pair = table_get (table, key);
+  bool is_new = pair->key == NULL;
+  if (is_new)
+    table->count++;
+
+  pair->key = key;
+  pair->value = value;
+  return is_new;
 }
 
 void
