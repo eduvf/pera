@@ -145,7 +145,7 @@ void
 array_new (array_t *array)
 {
   array->length = 0;
-  array->capacity = 8 * sizeof (value_t);
+  array->capacity = 8;
   array->values = malloc (8 * sizeof (value_t));
 }
 
