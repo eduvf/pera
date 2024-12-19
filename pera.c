@@ -33,8 +33,7 @@ typedef struct
   object_t object;
   int length;
   uint32_t hash;
-  // char *chars;
-  char chars[];
+  char *chars;
 } object_string_t;
 
 typedef struct
@@ -226,73 +225,6 @@ block_free (block_t *block)
   array_free (&block->constants);
 }
 
-/* GC FUNCTIONS */
-
-void
-free_object (object_t *object)
-{
-  switch (object->type)
-    {
-    case OBJECT_STRING:
-      {
-        object_string_t *string = (object_string_t *)object;
-        // free (string->chars);
-        free (object);
-        break;
-      }
-    }
-}
-
-void
-free_objects ()
-{
-  object_t *o = vm.objects;
-  while (o != NULL)
-    {
-      object_t *next = o->next;
-      free_object (o);
-      o = next;
-    }
-}
-
-/* VM FUNCTIONS */
-
-void
-vm_new (vm_t *vm)
-{
-  vm->top = vm->stack;
-  vm->objects = NULL;
-  block_new (&vm->block);
-}
-
-void
-vm_free (vm_t *vm)
-{
-  block_free (&vm->block);
-  free_objects ();
-}
-
-void
-vm_reset (vm_t *vm)
-{
-  vm_free (vm);
-  vm_new (vm);
-}
-
-void
-push (vm_t *vm, value_t value)
-{
-  *vm->top = value;
-  vm->top++;
-}
-
-value_t
-pop (vm_t *vm)
-{
-  vm->top--;
-  return *vm->top;
-}
-
 /* TABLE FUNCTIONS */
 
 void
@@ -386,7 +318,7 @@ hash_from_string (const char *string, int length)
 object_string_t *
 allocate_string (char *chars, int length)
 {
-  object_string_t *s = malloc (sizeof (*s) + (length + 1) * sizeof (char));
+  object_string_t *s = malloc (sizeof (object_string_t));
   object_t *o = (object_t *)s;
 
   o->type = OBJECT_STRING;
@@ -394,6 +326,7 @@ allocate_string (char *chars, int length)
   vm.objects = o;
 
   s->length = length;
+  s->chars = malloc ((length + 1) * sizeof (char));
   memcpy (s->chars, chars, length);
   s->chars[length] = '\0';
   s->hash = hash_from_string (s->chars, length);
@@ -404,7 +337,7 @@ object_string_t *
 allocate_concat_string (char *chars_a, int len_a, char *chars_b, int len_b)
 {
   int length = len_a + len_b;
-  object_string_t *s = malloc (sizeof (*s) + (length + 1) * sizeof (char));
+  object_string_t *s = malloc (sizeof (object_string_t));
   object_t *o = (object_t *)s;
 
   o->type = OBJECT_STRING;
@@ -412,6 +345,7 @@ allocate_concat_string (char *chars_a, int len_a, char *chars_b, int len_b)
   vm.objects = o;
 
   s->length = length;
+  s->chars = malloc ((length + 1) * sizeof (char));
   memcpy (s->chars, chars_a, len_a);
   memcpy (s->chars + len_a, chars_b, len_b);
   s->chars[length] = '\0';
@@ -423,6 +357,79 @@ object_string_t *
 copy_string (char *chars, int length)
 {
   return allocate_string (chars, length);
+}
+
+void
+string_free (object_string_t *string)
+{
+  free (string->chars);
+  free (string);
+}
+
+/* GC FUNCTIONS */
+
+void
+free_object (object_t *object)
+{
+  switch (object->type)
+    {
+    case OBJECT_STRING:
+      {
+        object_string_t *string = (object_string_t *)object;
+        string_free (string);
+        break;
+      }
+    }
+}
+
+void
+free_objects ()
+{
+  object_t *o = vm.objects;
+  while (o != NULL)
+    {
+      object_t *next = o->next;
+      free_object (o);
+      o = next;
+    }
+}
+
+/* VM FUNCTIONS */
+
+void
+vm_new (vm_t *vm)
+{
+  vm->top = vm->stack;
+  vm->objects = NULL;
+  block_new (&vm->block);
+}
+
+void
+vm_free (vm_t *vm)
+{
+  block_free (&vm->block);
+  free_objects ();
+}
+
+void
+vm_reset (vm_t *vm)
+{
+  vm_free (vm);
+  vm_new (vm);
+}
+
+void
+push (vm_t *vm, value_t value)
+{
+  *vm->top = value;
+  vm->top++;
+}
+
+value_t
+pop (vm_t *vm)
+{
+  vm->top--;
+  return *vm->top;
 }
 
 /* DEBUG */
