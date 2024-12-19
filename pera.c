@@ -155,7 +155,8 @@ array_push (array_t *array, value_t value)
   if (array->capacity < array->length + 1)
     {
       array->capacity *= 2;
-      array->values = realloc (array->values, array->capacity);
+      array->values
+          = realloc (array->values, array->capacity * sizeof (value_t));
       if (array->values == NULL)
         exit (1);
     }
@@ -176,8 +177,8 @@ void
 block_new (block_t *block)
 {
   block->length = 0;
-  block->capacity = 8 /* bytes */;
-  block->code = malloc (8 /* bytes */);
+  block->capacity = 8;
+  block->code = malloc (8 * sizeof (uint8_t));
   array_new (&block->constants);
 }
 
@@ -187,7 +188,7 @@ block_push (block_t *block, uint8_t byte)
   if (block->capacity < block->length + 1)
     {
       block->capacity *= 2;
-      block->code = realloc (block->code, block->capacity);
+      block->code = realloc (block->code, block->capacity * sizeof (uint8_t));
       if (block->code == NULL)
         exit (1);
     }
