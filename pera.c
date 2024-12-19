@@ -47,6 +47,20 @@ typedef struct
   } as;
 } value_t;
 
+typedef struct
+{
+  object_string_t *key;
+  value_t value;
+} pair_t;
+
+typedef struct
+{
+  object_t object;
+  int count;
+  int capacity;
+  pair_t *pairs;
+} object_table_t;
+
 typedef enum
 {
   OP_NIL,
@@ -278,6 +292,20 @@ pop (vm_t *vm)
 }
 
 /* TABLE FUNCTIONS */
+
+void
+table_new (object_table_t *table)
+{
+  table->count = 0;
+  table->capacity = 8 * sizeof (pair_t);
+  table->pairs = malloc (8 * sizeof (pair_t));
+}
+
+void
+table_free (object_table_t *table)
+{
+  free (table->pairs);
+}
 
 uint32_t
 hash_from_string (const char *string, int length)
