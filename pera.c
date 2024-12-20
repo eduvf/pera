@@ -279,6 +279,7 @@ table_grow (object_table_t *table)
   pair_t *new_pairs = malloc (new_capacity * sizeof (pair_t));
   fill_null_pairs (new_pairs, new_capacity);
 
+  table->count = 0;
   for (int i = 0; i < table->capacity; i++)
     {
       pair_t *pair = &table->pairs[i];
@@ -288,6 +289,8 @@ table_grow (object_table_t *table)
       pair_t *dest_pair = table_get (table, pair->key);
       dest_pair->key = pair->key;
       dest_pair->value = pair->value;
+
+      table->count++;
     }
 
   free (table->pairs);
@@ -303,7 +306,7 @@ table_set (object_table_t *table, object_string_t *key, value_t value)
     table_grow (table);
   pair_t *pair = table_get (table, key);
   bool is_new = pair->key == NULL;
-  if (is_new)
+  if (is_new && pair->value.type == TYPE_NIL)
     table->count++;
 
   pair->key = key;
