@@ -250,11 +250,24 @@ pair_t *
 table_get (object_table_t *table, object_string_t *key)
 {
   uint32_t i = key->hash % table->capacity;
+  pair_t *dead = NULL;
+
   while (1)
     {
       pair_t *pair = &table->pairs[i];
-      if (pair->key == key || pair->key == NULL)
-        return pair;
+      if (pair->key == NULL)
+        {
+          /* check for empty pair */
+          if (pair->value.type == TYPE_NIL)
+            return dead == NULL ? pair : dead;
+          /* else it's a dead pair */
+          else if (dead == NULL)
+            dead = pair;
+        }
+      else if (pair->key == key)
+        {
+          return pair;
+        }
       i = (i + 1) % table->capacity;
     }
 }
