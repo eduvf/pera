@@ -298,6 +298,21 @@ table_set (object_table_t *table, object_string_t *key, value_t value)
   return is_new;
 }
 
+bool
+table_remove (object_table_t *table, object_string_t *key)
+{
+  if (table->count == 0)
+    return false;
+
+  pair_t *pair = table_get (table, key);
+  if (pair->key == NULL)
+    return false;
+
+  pair->key = NULL;
+  pair->value = (value_t){ .type = TYPE_BOOL, .as.boolean = true };
+  return true;
+}
+
 void
 table_free (object_table_t *table)
 {
