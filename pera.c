@@ -381,6 +381,7 @@ hash_from_string (const char *string, int length)
 void
 string_free (object_string_t *string)
 {
+  // this doesn't remove the string from vm.objects for GC!
   free (string->chars);
   free (string);
 }
@@ -390,10 +391,6 @@ string_new (char *chars, int length)
 {
   object_string_t *s = malloc (sizeof (object_string_t));
   object_t *o = (object_t *)s;
-
-  o->type = OBJECT_STRING;
-  o->next = vm.objects;
-  vm.objects = o;
 
   s->length = length;
   s->chars = chars;
@@ -405,6 +402,11 @@ string_new (char *chars, int length)
       string_free (s);
       return interned;
     }
+
+  o->type = OBJECT_STRING;
+  o->next = vm.objects;
+  vm.objects = o;
+
   table_set (&vm.strings, s, (value_t){ .type = TYPE_NIL });
   return s;
 }
