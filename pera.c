@@ -353,8 +353,15 @@ hash_from_string (const char *string, int length)
 
 /* STRING FUNCTIONS */
 
+void
+string_free (object_string_t *string)
+{
+  free (string->chars);
+  free (string);
+}
+
 object_string_t *
-allocate_string (char *chars, int length)
+string_new (char *chars, int length)
 {
   object_string_t *s = malloc (sizeof (object_string_t));
   object_t *o = (object_t *)s;
@@ -364,62 +371,47 @@ allocate_string (char *chars, int length)
   vm.objects = o;
 
   s->length = length;
-  s->chars = malloc ((length + 1) * sizeof (char));
-  memcpy (s->chars, chars, length);
-  s->chars[length] = '\0';
+  s->chars = chars;
   s->hash = hash_from_string (s->chars, length);
 
   object_string_t *interned = table_find_string (&vm.strings, s);
   if (interned != NULL)
     {
-      free (s->chars);
-      free (s);
+      string_free (s);
       return interned;
     }
   table_set (&vm.strings, s, (value_t){ .type = TYPE_NIL });
   return s;
+}
+
+object_string_t *
+allocate_string (char *chars, int length)
+{
+  char *dest_chars = malloc ((length + 1) * sizeof (char));
+
+  memcpy (dest_chars, chars, length);
+  dest_chars[length] = '\0';
+
+  return string_new (dest_chars, length);
 }
 
 object_string_t *
 allocate_concat_string (char *chars_a, int len_a, char *chars_b, int len_b)
 {
   int length = len_a + len_b;
-  object_string_t *s = malloc (sizeof (object_string_t));
-  object_t *o = (object_t *)s;
+  char *dest_chars = malloc ((length + 1) * sizeof (char));
 
-  o->type = OBJECT_STRING;
-  o->next = vm.objects;
-  vm.objects = o;
+  memcpy (dest_chars, chars_a, len_a);
+  memcpy (dest_chars + len_a, chars_b, len_b);
+  dest_chars[length] = '\0';
 
-  s->length = length;
-  s->chars = malloc ((length + 1) * sizeof (char));
-  memcpy (s->chars, chars_a, len_a);
-  memcpy (s->chars + len_a, chars_b, len_b);
-  s->chars[length] = '\0';
-  s->hash = hash_from_string (s->chars, length);
-
-  object_string_t *interned = table_find_string (&vm.strings, s);
-  if (interned != NULL)
-    {
-      free (s->chars);
-      free (s);
-      return interned;
-    }
-  table_set (&vm.strings, s, (value_t){ .type = TYPE_NIL });
-  return s;
+  return string_new (dest_chars, length);
 }
 
 object_string_t *
 copy_string (char *chars, int length)
 {
   return allocate_string (chars, length);
-}
-
-void
-string_free (object_string_t *string)
-{
-  free (string->chars);
-  free (string);
 }
 
 /* GC FUNCTIONS */
