@@ -131,6 +131,7 @@ typedef struct
   uint8_t *pc;
   value_t stack[STACK_SIZE];
   value_t *top;
+  object_table_t strings;
   object_t *objects;
 } vm_t;
 
@@ -272,6 +273,12 @@ table_get (object_table_t *table, object_string_t *key)
     }
 }
 
+object_string_t *
+table_find_string (object_table_t *table, object_string_t *string)
+{
+  // TODO
+}
+
 void
 table_grow (object_table_t *table)
 {
@@ -361,6 +368,15 @@ allocate_string (char *chars, int length)
   memcpy (s->chars, chars, length);
   s->chars[length] = '\0';
   s->hash = hash_from_string (s->chars, length);
+
+  object_string_t *interned = table_find_string (&vm.strings, s);
+  if (interned != NULL)
+    {
+      free (s->chars);
+      free (s);
+      return interned;
+    }
+  table_set (&vm.strings, s, (value_t){ .type = TYPE_NIL });
   return s;
 }
 
@@ -381,6 +397,15 @@ allocate_concat_string (char *chars_a, int len_a, char *chars_b, int len_b)
   memcpy (s->chars + len_a, chars_b, len_b);
   s->chars[length] = '\0';
   s->hash = hash_from_string (s->chars, length);
+
+  object_string_t *interned = table_find_string (&vm.strings, s);
+  if (interned != NULL)
+    {
+      free (s->chars);
+      free (s);
+      return interned;
+    }
+  table_set (&vm.strings, s, (value_t){ .type = TYPE_NIL });
   return s;
 }
 
@@ -432,12 +457,14 @@ vm_new (vm_t *vm)
 {
   vm->top = vm->stack;
   vm->objects = NULL;
+  table_new (&vm->strings);
   block_new (&vm->block);
 }
 
 void
 vm_free (vm_t *vm)
 {
+  table_free (&vm->strings);
   block_free (&vm->block);
   free_objects ();
 }
