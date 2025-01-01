@@ -273,10 +273,35 @@ table_get (object_table_t *table, object_string_t *key)
     }
 }
 
+bool
+table_key_equals_string (pair_t *p, object_string_t *s)
+{
+  return p->key->length == s->length && p->key->hash == s->hash
+         && memcmp (p->key->chars, s->chars, s->length) == 0;
+}
+
 object_string_t *
 table_find_string (object_table_t *table, object_string_t *string)
 {
-  // TODO
+  if (table->count == 0)
+    return NULL;
+
+  uint32_t i = string->hash % table->capacity;
+  while (1)
+    {
+      pair_t *pair = &table->pairs[i];
+      if (pair->key == NULL)
+        {
+          /* check for empty pair */
+          if (pair->value.type == TYPE_NIL)
+            return NULL;
+        }
+      else if (table_key_equals_string (pair, string))
+        {
+          return pair->key;
+        }
+      i = (i + 1) % table->capacity;
+    }
 }
 
 void
