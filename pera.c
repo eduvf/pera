@@ -34,7 +34,7 @@ typedef struct
   int length;
   uint32_t hash;
   char *chars;
-} object_string_t;
+} string_t;
 
 typedef struct
 {
@@ -49,7 +49,7 @@ typedef struct
 
 typedef struct
 {
-  object_string_t *key;
+  string_t *key;
   value_t value;
 } pair_t;
 
@@ -59,7 +59,7 @@ typedef struct
   int count;
   int capacity;
   pair_t *pairs;
-} object_table_t;
+} table_t;
 
 typedef enum
 {
@@ -132,7 +132,7 @@ typedef struct
   uint8_t *pc;
   value_t stack[STACK_SIZE];
   value_t *top;
-  object_table_t strings;
+  table_t strings;
   object_t *objects;
 } vm_t;
 
@@ -230,7 +230,7 @@ block_free (block_t *block)
 /* TABLE FUNCTIONS */
 
 void
-fill_null_pairs (pair_t *pairs, int capacity)
+table_fill_null_pairs (pair_t *pairs, int capacity)
 {
   for (int i = 0; i < capacity; i++)
     {
@@ -240,16 +240,16 @@ fill_null_pairs (pair_t *pairs, int capacity)
 }
 
 void
-table_new (object_table_t *table)
+table_new (table_t *table)
 {
   table->count = 0;
   table->capacity = 8;
   table->pairs = malloc (8 * sizeof (pair_t));
-  fill_null_pairs (table->pairs, table->capacity);
+  table_fill_null_pairs (table->pairs, table->capacity);
 }
 
 pair_t *
-table_get (object_table_t *table, object_string_t *key)
+table_get (table_t *table, string_t *key)
 {
   uint32_t i = key->hash % table->capacity;
   pair_t *dead = NULL;
@@ -275,14 +275,14 @@ table_get (object_table_t *table, object_string_t *key)
 }
 
 bool
-table_key_equals_string (pair_t *p, object_string_t *s)
+table_key_equals_string (pair_t *p, string_t *s)
 {
   return p->key->length == s->length && p->key->hash == s->hash
          && memcmp (p->key->chars, s->chars, s->length) == 0;
 }
 
-object_string_t *
-table_find_string (object_table_t *table, object_string_t *string)
+string_t *
+table_find_string (table_t *table, string_t *string)
 {
   if (table->count == 0)
     return NULL;
@@ -306,11 +306,11 @@ table_find_string (object_table_t *table, object_string_t *string)
 }
 
 void
-table_grow (object_table_t *table)
+table_grow (table_t *table)
 {
   int new_capacity = table->capacity * 2;
   pair_t *new_pairs = malloc (new_capacity * sizeof (pair_t));
-  fill_null_pairs (new_pairs, new_capacity);
+  table_fill_null_pairs (new_pairs, new_capacity);
 
   table->count = 0;
   for (int i = 0; i < table->capacity; i++)
@@ -333,7 +333,7 @@ table_grow (object_table_t *table)
 }
 
 bool
-table_set (object_table_t *table, object_string_t *key, value_t value)
+table_set (table_t *table, string_t *key, value_t value)
 {
   if (table->count + 1 > table->capacity * TABLE_LOAD)
     table_grow (table);
@@ -348,7 +348,7 @@ table_set (object_table_t *table, object_string_t *key, value_t value)
 }
 
 bool
-table_remove (object_table_t *table, object_string_t *key)
+table_remove (table_t *table, string_t *key)
 {
   if (table->count == 0)
     return false;
@@ -363,7 +363,7 @@ table_remove (object_table_t *table, object_string_t *key)
 }
 
 void
-table_free (object_table_t *table)
+table_free (table_t *table)
 {
   free (table->pairs);
 }
@@ -380,24 +380,24 @@ hash_from_string (const char *string, int length)
 /* STRING FUNCTIONS */
 
 void
-string_free (object_string_t *string)
+string_free (string_t *string)
 {
   // this doesn't remove the string from vm.objects for GC!
   free (string->chars);
   free (string);
 }
 
-object_string_t *
+string_t *
 string_new (char *chars, int length)
 {
-  object_string_t *s = malloc (sizeof (object_string_t));
+  string_t *s = malloc (sizeof (string_t));
   object_t *o = (object_t *)s;
 
   s->length = length;
   s->chars = chars;
   s->hash = hash_from_string (s->chars, length);
 
-  object_string_t *interned = table_find_string (&vm.strings, s);
+  string_t *interned = table_find_string (&vm.strings, s);
   if (interned != NULL)
     {
       string_free (s);
@@ -412,8 +412,8 @@ string_new (char *chars, int length)
   return s;
 }
 
-object_string_t *
-allocate_string (char *chars, int length)
+string_t *
+string_allocate (char *chars, int length)
 {
   char *dest_chars = malloc ((length + 1) * sizeof (char));
 
@@ -423,8 +423,8 @@ allocate_string (char *chars, int length)
   return string_new (dest_chars, length);
 }
 
-object_string_t *
-allocate_concat_string (char *chars_a, int len_a, char *chars_b, int len_b)
+string_t *
+string_concat_and_allocate (char *chars_a, int len_a, char *chars_b, int len_b)
 {
   int length = len_a + len_b;
   char *dest_chars = malloc ((length + 1) * sizeof (char));
@@ -436,22 +436,22 @@ allocate_concat_string (char *chars_a, int len_a, char *chars_b, int len_b)
   return string_new (dest_chars, length);
 }
 
-object_string_t *
-copy_string (char *chars, int length)
+string_t *
+string_copy (char *chars, int length)
 {
-  return allocate_string (chars, length);
+  return string_allocate (chars, length);
 }
 
 /* GC FUNCTIONS */
 
 void
-free_object (object_t *object)
+gc_free_object (object_t *object)
 {
   switch (object->type)
     {
     case OBJECT_STRING:
       {
-        object_string_t *string = (object_string_t *)object;
+        string_t *string = (string_t *)object;
         string_free (string);
         break;
       }
@@ -459,13 +459,13 @@ free_object (object_t *object)
 }
 
 void
-free_objects ()
+gc_free_all ()
 {
   object_t *o = vm.objects;
   while (o != NULL)
     {
       object_t *next = o->next;
-      free_object (o);
+      gc_free_object (o);
       o = next;
     }
 }
@@ -486,7 +486,7 @@ vm_free (vm_t *vm)
 {
   table_free (&vm->strings);
   block_free (&vm->block);
-  free_objects ();
+  gc_free_all ();
 }
 
 void
@@ -497,14 +497,14 @@ vm_reset (vm_t *vm)
 }
 
 void
-push (vm_t *vm, value_t value)
+vm_push (vm_t *vm, value_t value)
 {
   *vm->top = value;
   vm->top++;
 }
 
 value_t
-pop (vm_t *vm)
+vm_pop (vm_t *vm)
 {
   vm->top--;
   return *vm->top;
@@ -513,7 +513,7 @@ pop (vm_t *vm)
 /* DEBUG */
 
 int
-disassemble_operation (block_t *block, size_t offset)
+dbg_disassemble_operation (block_t *block, size_t offset)
 {
   uint8_t constant;
   value_t value;
@@ -576,12 +576,12 @@ disassemble_operation (block_t *block, size_t offset)
 }
 
 void
-disassemble (block_t *block)
+dbg_disassemble_all (block_t *block)
 {
   for (size_t offset = 0; offset < block->length;)
     {
       printf ("%04zx ", offset);
-      offset += disassemble_operation (block, offset);
+      offset += dbg_disassemble_operation (block, offset);
     }
 }
 
@@ -648,7 +648,7 @@ print_value (value_t v)
         {
         case OBJECT_STRING:
           {
-            object_string_t *s = (object_string_t *)v.as.object;
+            string_t *s = (string_t *)v.as.object;
             printf ("\"%s\"", s->chars);
             break;
           }
@@ -662,9 +662,9 @@ print_value (value_t v)
     {                                                                         \
       if (!check_top_2_type (vm, TYPE_NUMBER))                                \
         return RESULT_RUNTIME_ERROR;                                          \
-      double b = pop (vm).as.number;                                          \
-      double a = pop (vm).as.number;                                          \
-      push (vm, value_from_number (a o b));                                   \
+      double b = vm_pop (vm).as.number;                                       \
+      double a = vm_pop (vm).as.number;                                       \
+      vm_push (vm, value_from_number (a o b));                                \
     }                                                                         \
   while (0)
 
@@ -684,28 +684,28 @@ run (vm_t *vm)
           printf ("]");
         }
       printf ("\n");
-      disassemble_operation (&vm->block, (int)(vm->pc - vm->block.code));
+      dbg_disassemble_operation (&vm->block, (int)(vm->pc - vm->block.code));
 #endif
       switch (op = *vm->pc++)
         {
         case OP_NIL:
-          push (vm, (value_t){ .type = TYPE_NIL });
+          vm_push (vm, (value_t){ .type = TYPE_NIL });
           break;
         case OP_TRUE:
-          push (vm, (value_t){ .type = TYPE_BOOL, .as = true });
+          vm_push (vm, (value_t){ .type = TYPE_BOOL, .as = true });
           break;
         case OP_FALSE:
-          push (vm, (value_t){ .type = TYPE_BOOL, .as = false });
+          vm_push (vm, (value_t){ .type = TYPE_BOOL, .as = false });
           break;
         case OP_CONSTANT:
           v = vm->block.constants.values[*vm->pc++];
           printf ("%g\n", v.as.number);
-          push (vm, v);
+          vm_push (vm, v);
           break;
         case OP_NEG:
           if (!check_top_type (vm, TYPE_NUMBER))
             return RESULT_RUNTIME_ERROR;
-          push (vm, value_from_number (-pop (vm).as.number));
+          vm_push (vm, value_from_number (-vm_pop (vm).as.number));
           break;
         case OP_ADD:
           BINARY_OP (+);
@@ -723,24 +723,24 @@ run (vm_t *vm)
           {
             if (!check_top_2_type (vm, TYPE_NUMBER))
               return RESULT_RUNTIME_ERROR;
-            double b = pop (vm).as.number;
-            double a = pop (vm).as.number;
-            push (vm, value_from_number (fmod (a, b)));
+            double b = vm_pop (vm).as.number;
+            double a = vm_pop (vm).as.number;
+            vm_push (vm, value_from_number (fmod (a, b)));
             break;
           }
         case OP_NOT:
           {
-            push (vm, (value_t){ .type = TYPE_BOOL,
-                                 .as = !value_to_boolean (pop (vm)) });
+            vm_push (vm, (value_t){ .type = TYPE_BOOL,
+                                    .as = !value_to_boolean (vm_pop (vm)) });
             break;
           }
         case OP_EQ:
           {
             if (!check_top_2_type (vm, TYPE_NUMBER))
               return RESULT_RUNTIME_ERROR;
-            double b = pop (vm).as.number;
-            double a = pop (vm).as.number;
-            push (vm, (value_t){ .type = TYPE_BOOL, .as = a == b });
+            double b = vm_pop (vm).as.number;
+            double a = vm_pop (vm).as.number;
+            vm_push (vm, (value_t){ .type = TYPE_BOOL, .as = a == b });
             break;
           }
         case OP_CONCAT:
@@ -750,17 +750,17 @@ run (vm_t *vm)
             if (!check_top_2_object_type (vm, OBJECT_STRING))
               return RESULT_RUNTIME_ERROR;
 
-            object_string_t *b = (object_string_t *)pop (vm).as.object;
-            object_string_t *a = (object_string_t *)pop (vm).as.object;
+            string_t *b = (string_t *)vm_pop (vm).as.object;
+            string_t *a = (string_t *)vm_pop (vm).as.object;
 
-            object_t *o = (object_t *)allocate_concat_string (
+            object_t *o = (object_t *)string_concat_and_allocate (
                 a->chars, a->length, b->chars, b->length);
-            push (vm, (value_t){ .type = TYPE_OBJECT, .as.object = o });
+            vm_push (vm, (value_t){ .type = TYPE_OBJECT, .as.object = o });
             break;
           }
         case OP_PRINT:
           {
-            print_value (pop (vm));
+            print_value (vm_pop (vm));
             printf ("\n");
             break;
           }
@@ -958,7 +958,7 @@ void
 emit_string (token_t token, block_t *block)
 {
   value_t v = { .type = TYPE_OBJECT,
-                .as.object = (object_t *)copy_string ((char *)token.start,
+                .as.object = (object_t *)string_copy ((char *)token.start,
                                                       token.length) };
 
   block_push_constant (block, v);
@@ -969,7 +969,7 @@ emit_string (token_t token, block_t *block)
 }
 
 bool
-expression (token_t token, block_t *block)
+parse_expression (token_t token, block_t *block)
 {
   switch (token.type)
     {
@@ -1002,7 +1002,7 @@ expression (token_t token, block_t *block)
             token = scan_token ();
             if (token.type == TOKEN_RPAREN || token.type == TOKEN_END)
               break;
-            if (!expression (token, block))
+            if (!parse_expression (token, block))
               return false;
           }
         while (1);
@@ -1045,14 +1045,14 @@ expression (token_t token, block_t *block)
 }
 
 bool
-compile (const char *source, block_t *block)
+compile_block (const char *source, block_t *block)
 {
   scan_new (source);
   while (1)
     {
       token_t token = scan_token ();
 
-      if (!expression (token, block))
+      if (!parse_expression (token, block))
         return false;
 
       if (token.type == TOKEN_END)
@@ -1066,11 +1066,11 @@ interpret (char *source)
 {
   result_t result;
 
-  if (!compile (source, &vm.block))
+  if (!compile_block (source, &vm.block))
     return RESULT_COMPILE_ERROR;
 
 #ifdef DEBUG
-  disassemble (&vm.block);
+  dbg_disassemble_all (&vm.block);
 #endif
 
   vm.pc = vm.block.code;
