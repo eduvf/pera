@@ -76,6 +76,7 @@ typedef enum
   OP_NOT,
   OP_EQ,
   OP_CONCAT,
+  OP_PRINT,
   OP_RETURN,
   OP_ERROR,
 } opcode_t;
@@ -560,7 +561,10 @@ disassemble_operation (block_t *block, size_t offset)
       printf ("EQ\n");
       return 1;
     case OP_CONCAT:
-      printf ("OP_CONCAT\n");
+      printf ("CONCAT\n");
+      return 1;
+    case OP_PRINT:
+      printf ("PRINT\n");
       return 1;
     case OP_RETURN:
       printf ("RETURN\n");
@@ -754,9 +758,15 @@ run (vm_t *vm)
             push (vm, (value_t){ .type = TYPE_OBJECT, .as.object = o });
             break;
           }
+        case OP_PRINT:
+          {
+            print_value (pop (vm));
+            printf ("\n");
+            break;
+          }
         case OP_RETURN:
-          print_value (pop (vm));
-          printf ("\n");
+          // print_value (pop (vm));
+          // printf ("\n");
           return RESULT_OK;
         }
     }
@@ -903,6 +913,8 @@ is_token_op (token_t token)
     }
   if (is_token_string (token, ".."))
     return OP_CONCAT;
+  if (is_token_string (token, "print"))
+    return OP_PRINT;
   if (is_token_string (token, "not"))
     return OP_NOT;
   if (is_token_string (token, "nil"))
