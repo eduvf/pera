@@ -473,41 +473,41 @@ gc_free_all ()
 /* VM FUNCTIONS */
 
 void
-vm_new (vm_t *vm)
+vm_new ()
 {
-  vm->top = vm->stack;
-  vm->objects = NULL;
-  table_new (&vm->strings);
-  block_new (&vm->block);
+  vm.top = vm.stack;
+  vm.objects = NULL;
+  table_new (&vm.strings);
+  block_new (&vm.block);
 }
 
 void
-vm_free (vm_t *vm)
+vm_free ()
 {
-  table_free (&vm->strings);
-  block_free (&vm->block);
+  table_free (&vm.strings);
+  block_free (&vm.block);
   gc_free_all ();
 }
 
 void
-vm_reset (vm_t *vm)
+vm_reset ()
 {
-  vm_free (vm);
-  vm_new (vm);
+  vm_free ();
+  vm_new ();
 }
 
 void
-vm_push (vm_t *vm, value_t value)
+vm_push (value_t value)
 {
-  *vm->top = value;
-  vm->top++;
+  *vm.top = value;
+  vm.top++;
 }
 
 value_t
-vm_pop (vm_t *vm)
+vm_pop ()
 {
-  vm->top--;
-  return *vm->top;
+  vm.top--;
+  return *vm.top;
 }
 
 /* DEBUG */
@@ -611,22 +611,22 @@ value_to_boolean (value_t v)
 }
 
 bool
-check_top_type (vm_t *vm, value_type_t type)
+check_top_type (value_type_t type)
 {
-  return vm->top[-1].type == type;
+  return vm.top[-1].type == type;
 }
 
 bool
-check_top_2_type (vm_t *vm, value_type_t type)
+check_top_2_type (value_type_t type)
 {
-  return vm->top[-2].type == type && vm->top[-1].type == type;
+  return vm.top[-2].type == type && vm.top[-1].type == type;
 }
 
 bool
-check_top_2_object_type (vm_t *vm, object_type_t type)
+check_top_2_object_type (object_type_t type)
 {
-  return vm->top[-2].as.object->type == type
-         && vm->top[-1].as.object->type == type;
+  return vm.top[-2].as.object->type == type
+         && vm.top[-1].as.object->type == type;
 }
 
 void
@@ -660,16 +660,16 @@ print_value (value_t v)
 #define BINARY_OP(o)                                                          \
   do                                                                          \
     {                                                                         \
-      if (!check_top_2_type (vm, TYPE_NUMBER))                                \
+      if (!check_top_2_type (TYPE_NUMBER))                                    \
         return RESULT_RUNTIME_ERROR;                                          \
-      double b = vm_pop (vm).as.number;                                       \
-      double a = vm_pop (vm).as.number;                                       \
-      vm_push (vm, value_from_number (a o b));                                \
+      double b = vm_pop ().as.number;                                         \
+      double a = vm_pop ().as.number;                                         \
+      vm_push (value_from_number (a o b));                                    \
     }                                                                         \
   while (0)
 
 result_t
-run (vm_t *vm)
+run ()
 {
   uint8_t op;
   value_t v;
@@ -677,35 +677,35 @@ run (vm_t *vm)
   while (1)
     {
 #ifdef DEBUG
-      for (value_t *v = vm->stack; v < vm->top; v++)
+      for (value_t *v = vm.stack; v < vm.top; v++)
         {
           printf ("[");
           print_value (*v);
           printf ("]");
         }
       printf ("\n");
-      dbg_disassemble_operation (&vm->block, (int)(vm->pc - vm->block.code));
+      dbg_disassemble_operation (&vm.block, (int)(vm.pc - vm.block.code));
 #endif
-      switch (op = *vm->pc++)
+      switch (op = *vm.pc++)
         {
         case OP_NIL:
-          vm_push (vm, (value_t){ .type = TYPE_NIL });
+          vm_push ((value_t){ .type = TYPE_NIL });
           break;
         case OP_TRUE:
-          vm_push (vm, (value_t){ .type = TYPE_BOOL, .as = true });
+          vm_push ((value_t){ .type = TYPE_BOOL, .as = true });
           break;
         case OP_FALSE:
-          vm_push (vm, (value_t){ .type = TYPE_BOOL, .as = false });
+          vm_push ((value_t){ .type = TYPE_BOOL, .as = false });
           break;
         case OP_CONSTANT:
-          v = vm->block.constants.values[*vm->pc++];
+          v = vm.block.constants.values[*vm.pc++];
           printf ("%g\n", v.as.number);
-          vm_push (vm, v);
+          vm_push (v);
           break;
         case OP_NEG:
-          if (!check_top_type (vm, TYPE_NUMBER))
+          if (!check_top_type (TYPE_NUMBER))
             return RESULT_RUNTIME_ERROR;
-          vm_push (vm, value_from_number (-vm_pop (vm).as.number));
+          vm_push (value_from_number (-vm_pop ().as.number));
           break;
         case OP_ADD:
           BINARY_OP (+);
@@ -721,46 +721,46 @@ run (vm_t *vm)
           break;
         case OP_MOD:
           {
-            if (!check_top_2_type (vm, TYPE_NUMBER))
+            if (!check_top_2_type (TYPE_NUMBER))
               return RESULT_RUNTIME_ERROR;
-            double b = vm_pop (vm).as.number;
-            double a = vm_pop (vm).as.number;
-            vm_push (vm, value_from_number (fmod (a, b)));
+            double b = vm_pop ().as.number;
+            double a = vm_pop ().as.number;
+            vm_push (value_from_number (fmod (a, b)));
             break;
           }
         case OP_NOT:
           {
-            vm_push (vm, (value_t){ .type = TYPE_BOOL,
-                                    .as = !value_to_boolean (vm_pop (vm)) });
+            vm_push ((value_t){ .type = TYPE_BOOL,
+                                .as = !value_to_boolean (vm_pop ()) });
             break;
           }
         case OP_EQ:
           {
-            if (!check_top_2_type (vm, TYPE_NUMBER))
+            if (!check_top_2_type (TYPE_NUMBER))
               return RESULT_RUNTIME_ERROR;
-            double b = vm_pop (vm).as.number;
-            double a = vm_pop (vm).as.number;
-            vm_push (vm, (value_t){ .type = TYPE_BOOL, .as = a == b });
+            double b = vm_pop ().as.number;
+            double a = vm_pop ().as.number;
+            vm_push ((value_t){ .type = TYPE_BOOL, .as = a == b });
             break;
           }
         case OP_CONCAT:
           {
-            if (!check_top_2_type (vm, TYPE_OBJECT))
+            if (!check_top_2_type (TYPE_OBJECT))
               return RESULT_RUNTIME_ERROR;
-            if (!check_top_2_object_type (vm, OBJECT_STRING))
+            if (!check_top_2_object_type (OBJECT_STRING))
               return RESULT_RUNTIME_ERROR;
 
-            string_t *b = (string_t *)vm_pop (vm).as.object;
-            string_t *a = (string_t *)vm_pop (vm).as.object;
+            string_t *b = (string_t *)vm_pop ().as.object;
+            string_t *a = (string_t *)vm_pop ().as.object;
 
             object_t *o = (object_t *)string_concat_and_allocate (
                 a->chars, a->length, b->chars, b->length);
-            vm_push (vm, (value_t){ .type = TYPE_OBJECT, .as.object = o });
+            vm_push ((value_t){ .type = TYPE_OBJECT, .as.object = o });
             break;
           }
         case OP_PRINT:
           {
-            print_value (vm_pop (vm));
+            print_value (vm_pop ());
             printf ("\n");
             break;
           }
@@ -1074,7 +1074,7 @@ interpret (char *source)
 #endif
 
   vm.pc = vm.block.code;
-  result = run (&vm);
+  result = run ();
 
   return result;
 };
@@ -1094,7 +1094,7 @@ repl ()
         }
 
       interpret (line);
-      vm_reset (&vm);
+      vm_reset ();
     }
 }
 
@@ -1163,7 +1163,7 @@ init_message ()
 int
 main (int argc, const char *argv[])
 {
-  vm_new (&vm);
+  vm_new ();
 
   init_message ();
   if (argc == 1)
@@ -1176,6 +1176,6 @@ main (int argc, const char *argv[])
       exit (1);
     }
 
-  vm_free (&vm);
+  vm_free ();
   return 0;
 }
