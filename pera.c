@@ -210,7 +210,7 @@ block_add_constant (block_t *block, value_t value)
 }
 
 void
-block_push_constant (block_t *block, value_t value)
+block_push_constant (block_t *block, value_t value, opcode_t op)
 {
   int constant = block_add_constant (block, value);
   if (constant > UINT8_MAX)
@@ -219,35 +219,7 @@ block_push_constant (block_t *block, value_t value)
       exit (1);
     }
 
-  block_push (block, OP_CONSTANT);
-  block_push (block, constant);
-}
-
-void
-block_push_set_global (block_t *block, value_t value)
-{
-  int constant = block_add_constant (block, value);
-  if (constant > UINT8_MAX)
-    {
-      fprintf (stderr, "Too many constants in block.\n");
-      exit (1);
-    }
-
-  block_push (block, OP_SET_GLOBAL);
-  block_push (block, constant);
-}
-
-void
-block_push_get_global (block_t *block, value_t value)
-{
-  int constant = block_add_constant (block, value);
-  if (constant > UINT8_MAX)
-    {
-      fprintf (stderr, "Too many constants in block.\n");
-      exit (1);
-    }
-
-  block_push (block, OP_GET_GLOBAL);
+  block_push (block, op);
   block_push (block, constant);
 }
 
@@ -992,7 +964,7 @@ emit_word (token_t token, block_t *block)
       value_t k = { .type = TYPE_OBJECT,
                     .as.object = (object_t *)string_copy ((char *)token.start,
                                                           token.length) };
-      block_push_set_global (block, k);
+      block_push_constant (block, k, OP_SET_GLOBAL);
       return true;
     }
 
@@ -1005,7 +977,7 @@ emit_word (token_t token, block_t *block)
       value_t k = { .type = TYPE_OBJECT,
                     .as.object = (object_t *)string_copy ((char *)token.start,
                                                           token.length) };
-      block_push_get_global (block, k);
+      block_push_constant (block, k, OP_GET_GLOBAL);
       return true;
     }
 
@@ -1022,7 +994,7 @@ emit_number (token_t token, block_t *block)
 {
   double n = strtod (token.start, NULL);
 
-  block_push_constant (block, value_from_number (n));
+  block_push_constant (block, value_from_number (n), OP_CONSTANT);
 }
 
 void
@@ -1032,7 +1004,7 @@ emit_string (token_t token, block_t *block)
                 .as.object = (object_t *)string_copy ((char *)token.start,
                                                       token.length) };
 
-  block_push_constant (block, v);
+  block_push_constant (block, v, OP_CONSTANT);
 
 #ifdef DEBUG
   printf ("string '%.*s'\n", token.length, token.start);
