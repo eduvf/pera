@@ -68,6 +68,7 @@ typedef enum
   OP_FALSE,
   OP_CONSTANT,
   OP_SET_GLOBAL,
+  OP_GET_GLOBAL,
   OP_NEG,
   OP_ADD,
   OP_SUB,
@@ -233,6 +234,20 @@ block_push_set_global (block_t *block, value_t value)
     }
 
   block_push (block, OP_SET_GLOBAL);
+  block_push (block, constant);
+}
+
+void
+block_push_get_global (block_t *block, value_t value)
+{
+  int constant = block_add_constant (block, value);
+  if (constant > UINT8_MAX)
+    {
+      fprintf (stderr, "Too many constants in block.\n");
+      exit (1);
+    }
+
+  block_push (block, OP_GET_GLOBAL);
   block_push (block, constant);
 }
 
@@ -557,6 +572,9 @@ dbg_disassemble_operation (block_t *block, size_t offset)
     case OP_SET_GLOBAL:
       printf ("SET GLOBAL\n");
       return 2;
+    case OP_GET_GLOBAL:
+      printf ("GET GLOBAL\n");
+      return 2;
     case OP_NEG:
       printf ("NEG\n");
       return 1;
@@ -728,6 +746,11 @@ run ()
           v = vm.block.constants.values[*vm.pc++];
           k = (string_t *)v.as.object;
           table_set (&vm.globals, k, vm_pop ());
+          break;
+        case OP_GET_GLOBAL:
+          v = vm.block.constants.values[*vm.pc++];
+          k = (string_t *)v.as.object;
+          vm_push (table_get (&vm.globals, k)->value);
           break;
         case OP_NEG:
           if (!check_top_type (TYPE_NUMBER))
@@ -976,9 +999,14 @@ emit_word (token_t token, block_t *block)
   opcode_t op = is_token_op (token);
   if (op == OP_ERROR)
     {
-      fprintf (stderr, "Unrecognized word '%.*s'\n", token.length,
-               token.start);
-      return false;
+      // fprintf (stderr, "Unrecognized word '%.*s'\n", token.length,
+      //          token.start);
+      // return false;
+      value_t k = { .type = TYPE_OBJECT,
+                    .as.object = (object_t *)string_copy ((char *)token.start,
+                                                          token.length) };
+      block_push_get_global (block, k);
+      return true;
     }
 
   block_push (block, op);
