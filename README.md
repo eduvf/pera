@@ -1,12 +1,5 @@
 # 🍐 pera
 
-### example
+## to-do
 
-```
-on (f n)
-  if = n 0
-    1
-    * n (f - n 1)
-
-(f 5)
-```
+- [ ] don't add a new constant for each set/get global variable
