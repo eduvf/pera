@@ -67,6 +67,7 @@ typedef enum
   OP_TRUE,
   OP_FALSE,
   OP_CONSTANT,
+  OP_SET_GLOBAL,
   OP_NEG,
   OP_ADD,
   OP_SUB,
@@ -133,6 +134,7 @@ typedef struct
   value_t stack[STACK_SIZE];
   value_t *top;
   table_t strings;
+  table_t globals;
   object_t *objects;
 } vm_t;
 
@@ -217,6 +219,20 @@ block_push_constant (block_t *block, value_t value)
     }
 
   block_push (block, OP_CONSTANT);
+  block_push (block, constant);
+}
+
+void
+block_push_set_global (block_t *block, value_t value)
+{
+  int constant = block_add_constant (block, value);
+  if (constant > UINT8_MAX)
+    {
+      fprintf (stderr, "Too many constants in block.\n");
+      exit (1);
+    }
+
+  block_push (block, OP_SET_GLOBAL);
   block_push (block, constant);
 }
 
@@ -478,6 +494,7 @@ vm_new ()
   vm.top = vm.stack;
   vm.objects = NULL;
   table_new (&vm.strings);
+  table_new (&vm.globals);
   block_new (&vm.block);
 }
 
@@ -485,6 +502,7 @@ void
 vm_free ()
 {
   table_free (&vm.strings);
+  table_free (&vm.globals);
   block_free (&vm.block);
   gc_free_all ();
 }
@@ -535,6 +553,9 @@ dbg_disassemble_operation (block_t *block, size_t offset)
       constant = block->code[offset + 1];
       value = block->constants.values[constant];
       printf ("CONSTANT %02x %g\n", constant, value.as.number);
+      return 2;
+    case OP_SET_GLOBAL:
+      printf ("SET GLOBAL\n");
       return 2;
     case OP_NEG:
       printf ("NEG\n");
@@ -673,6 +694,7 @@ run ()
 {
   uint8_t op;
   value_t v;
+  string_t *k;
 
   while (1)
     {
@@ -701,6 +723,11 @@ run ()
           v = vm.block.constants.values[*vm.pc++];
           printf ("%g\n", v.as.number);
           vm_push (v);
+          break;
+        case OP_SET_GLOBAL:
+          v = vm.block.constants.values[*vm.pc++];
+          k = (string_t *)v.as.object;
+          table_set (&vm.globals, k, vm_pop ());
           break;
         case OP_NEG:
           if (!check_top_type (TYPE_NUMBER))
@@ -890,6 +917,12 @@ is_token_string (token_t token, const char *str)
   return same_str && same_len;
 }
 
+bool
+is_token_set_global (token_t token)
+{
+  return token.length > 1 && token.start[token.length - 1] == ':';
+}
+
 opcode_t
 is_token_op (token_t token)
 {
@@ -930,6 +963,16 @@ is_token_op (token_t token)
 bool
 emit_word (token_t token, block_t *block)
 {
+  if (is_token_set_global (token))
+    {
+      token.length--; // don't include the ':'
+      value_t k = { .type = TYPE_OBJECT,
+                    .as.object = (object_t *)string_copy ((char *)token.start,
+                                                          token.length) };
+      block_push_set_global (block, k);
+      return true;
+    }
+
   opcode_t op = is_token_op (token);
   if (op == OP_ERROR)
     {
