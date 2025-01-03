@@ -497,8 +497,11 @@ vm_free ()
 void
 vm_reset ()
 {
-  vm_free ();
-  vm_new ();
+  block_free (&vm.block);
+  block_new (&vm.block);
+  gc_free_all ();
+  vm.objects = NULL;
+  vm.top = vm.stack;
 }
 
 void
