@@ -144,6 +144,44 @@ typedef struct
 scan_t scan;
 vm_t vm;
 
+/* COMPARE VALUES */
+
+bool
+value_objects_are_equal (value_t v1, value_t v2)
+{
+  object_t *o1 = v1.as.object;
+  object_t *o2 = v2.as.object;
+
+  switch (o1->type)
+    {
+    case OBJECT_STRING:
+      {
+        string_t *s1 = (string_t *)o1;
+        string_t *s2 = (string_t *)o2;
+        return s1 == s2;
+      }
+    }
+}
+
+bool
+value_are_equal (value_t v1, value_t v2)
+{
+  if (v1.type != v2.type)
+    return false;
+
+  switch (v1.type)
+    {
+    case TYPE_NIL:
+      return true;
+    case TYPE_BOOL:
+      return v1.as.boolean == v2.as.boolean;
+    case TYPE_NUMBER:
+      return v1.as.number == v2.as.number;
+    case TYPE_OBJECT:
+      return value_objects_are_equal (v1, v2);
+    }
+}
+
 /* ARRAY FUNCTIONS */
 
 void
