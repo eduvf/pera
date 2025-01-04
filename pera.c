@@ -255,6 +255,10 @@ block_push (block_t *block, uint8_t byte)
 int
 block_add_constant (block_t *block, value_t value)
 {
+  int i = array_find (&block->constants, value);
+  if (i >= 0)
+    return i;
+
   array_push (&block->constants, value);
   return block->constants.length - 1;
 }
