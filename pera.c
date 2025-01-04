@@ -208,6 +208,18 @@ array_push (array_t *array, value_t value)
   array->length++;
 }
 
+int
+array_find (array_t *array, value_t value)
+{
+  for (int i = 0; i < array->length; i++)
+    {
+      value_t array_value = array->values[i];
+      if (value_are_equal (value, array_value))
+        return i;
+    }
+  return -1;
+}
+
 void
 array_free (array_t *array)
 {
