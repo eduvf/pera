@@ -968,12 +968,6 @@ is_token_string (token_t token, const char *str)
   return same_str && same_len;
 }
 
-bool
-is_token_set_global (token_t token)
-{
-  return token.length > 1 && token.start[token.length - 1] == ':';
-}
-
 opcode_t
 is_token_op (token_t token)
 {
@@ -1011,29 +1005,32 @@ is_token_op (token_t token)
   return OP_ERROR;
 }
 
+void
+emit_set_global (token_t token, block_t *block)
+{
+  value_t k = { .type = TYPE_OBJECT,
+                .as.object = (object_t *)string_copy ((char *)token.start,
+                                                      token.length) };
+  block_push_constant (block, k, OP_SET_GLOBAL);
+}
+
+void
+emit_get_global (token_t token, block_t *block)
+{
+  value_t k = { .type = TYPE_OBJECT,
+                .as.object = (object_t *)string_copy ((char *)token.start,
+                                                      token.length) };
+  block_push_constant (block, k, OP_GET_GLOBAL);
+}
+
 bool
 emit_word (token_t token, block_t *block)
 {
-  if (is_token_set_global (token))
-    {
-      token.length--; // don't include the ':'
-      value_t k = { .type = TYPE_OBJECT,
-                    .as.object = (object_t *)string_copy ((char *)token.start,
-                                                          token.length) };
-      block_push_constant (block, k, OP_SET_GLOBAL);
-      return true;
-    }
-
   opcode_t op = is_token_op (token);
   if (op == OP_ERROR)
     {
-      // fprintf (stderr, "Unrecognized word '%.*s'\n", token.length,
-      //          token.start);
-      // return false;
-      value_t k = { .type = TYPE_OBJECT,
-                    .as.object = (object_t *)string_copy ((char *)token.start,
-                                                          token.length) };
-      block_push_constant (block, k, OP_GET_GLOBAL);
+      if (*token.start == '_')
+        emit_get_global (token, block);
       return true;
     }
 
@@ -1067,6 +1064,48 @@ emit_string (token_t token, block_t *block)
 #endif
 }
 
+bool parse_expression (token_t token, block_t *block);
+
+bool
+parse_put_form (block_t *block)
+{
+  token_t key = scan_token ();
+  token_t next_token = scan_token ();
+
+  if (key.type != TOKEN_WORD)
+    {
+      fprintf (stderr, "First argument to 'put' must be a word\n");
+      return false;
+    }
+
+  if (next_token.type == TOKEN_END)
+    {
+      fprintf (stderr, "Unexpected EOF\n");
+      return false;
+    }
+
+  if (next_token.type == TOKEN_RPAREN)
+    block_push (block, OP_NIL);
+  else if (!parse_expression (next_token, block))
+    return false;
+
+  next_token = scan_token ();
+  if (next_token.type != TOKEN_RPAREN)
+    {
+      fprintf (stderr, "Missing ')' or too much arguments for 'put'\n");
+      return false;
+    }
+
+  // if key starts with '_', make it global
+  if (*key.start == '_')
+    emit_set_global (key, block);
+  else
+    // TODO
+    return false;
+
+  return true;
+}
+
 bool
 parse_expression (token_t token, block_t *block)
 {
@@ -1095,6 +1134,9 @@ parse_expression (token_t token, block_t *block)
             fprintf (stderr, "Expression must start with a word\n");
             return false;
           }
+
+        if (is_token_string (first_token, "put"))
+          return parse_put_form (block);
 
         do
           {
