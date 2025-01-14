@@ -553,7 +553,6 @@ vm_reset ()
 {
   block_free (&vm.block);
   block_new (&vm.block);
-  gc_free_all ();
   vm.objects = NULL;
   vm.top = vm.stack;
 }
