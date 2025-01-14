@@ -1090,6 +1090,38 @@ emit_string (token_t token, block_t *block)
 bool parse_expression (token_t token, block_t *block);
 
 bool
+parse_multiple_expressions (token_t token, block_t *block)
+{
+  do
+    {
+      token = scan_token ();
+      if (token.type == TOKEN_RPAREN || token.type == TOKEN_END)
+        break;
+      if (!parse_expression (token, block))
+        return false;
+    }
+  while (1);
+
+  if (token.type != TOKEN_RPAREN)
+    {
+      fprintf (stderr, "Missing ')'\n");
+      return false;
+    }
+
+  return true;
+}
+
+bool
+parse_do_form (token_t token, block_t *block)
+{
+  compiler.scope_depth++;
+  if (!parse_multiple_expressions (token, block))
+    return false;
+  compiler.scope_depth--;
+  return true;
+}
+
+bool
 parse_put_form (block_t *block)
 {
   token_t key = scan_token ();
@@ -1158,27 +1190,18 @@ parse_expression (token_t token, block_t *block)
             return false;
           }
 
+        if (is_token_string (first_token, "do"))
+          return parse_do_form (token, block);
+
         if (is_token_string (first_token, "put"))
           return parse_put_form (block);
 
-        do
-          {
-            token = scan_token ();
-            if (token.type == TOKEN_RPAREN || token.type == TOKEN_END)
-              break;
-            if (!parse_expression (token, block))
-              return false;
-          }
-        while (1);
+        if (!parse_multiple_expressions (token, block))
+          return false;
 
         if (!emit_word (first_token, block))
           return false;
 
-        if (token.type != TOKEN_RPAREN)
-          {
-            fprintf (stderr, "Missing ')'\n");
-            return false;
-          }
         return true;
       }
     case TOKEN_WORD:
