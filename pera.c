@@ -130,6 +130,19 @@ typedef struct
 
 typedef struct
 {
+  token_t name;
+  int depth;
+} local_t;
+
+typedef struct
+{
+  local_t locals[256];
+  int local_count;
+  int scope_depth;
+} compiler_t;
+
+typedef struct
+{
   block_t block;
   uint8_t *pc;
   value_t stack[STACK_SIZE];
@@ -142,6 +155,7 @@ typedef struct
 /* GLOBALS */
 
 scan_t scan;
+compiler_t compiler;
 vm_t vm;
 
 /* COMPARE VALUES */
@@ -525,6 +539,15 @@ gc_free_all ()
       gc_free_object (o);
       o = next;
     }
+}
+
+/* COMPILER FUNCTIONS */
+
+void
+compiler_new ()
+{
+  compiler.local_count = 0;
+  compiler.scope_depth = 0;
 }
 
 /* VM FUNCTIONS */
@@ -1305,6 +1328,7 @@ int
 main (int argc, const char *argv[])
 {
   vm_new ();
+  compiler_new ();
 
   init_message ();
   if (argc == 1)
