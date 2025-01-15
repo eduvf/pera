@@ -79,6 +79,7 @@ typedef enum
   OP_EQ,
   OP_CONCAT,
   OP_PRINT,
+  OP_POP,
   OP_RETURN,
   OP_ERROR,
 } opcode_t;
@@ -656,6 +657,9 @@ dbg_disassemble_operation (block_t *block, size_t offset)
     case OP_PRINT:
       printf ("PRINT\n");
       return 1;
+    case OP_POP:
+      printf ("POP\n");
+      return 1;
     case OP_RETURN:
       printf ("RETURN\n");
       return 1;
@@ -863,6 +867,11 @@ run ()
           {
             print_value (vm_pop ());
             printf ("\n");
+            break;
+          }
+        case OP_POP:
+          {
+            vm_pop ();
             break;
           }
         case OP_RETURN:
