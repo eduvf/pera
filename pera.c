@@ -1047,6 +1047,14 @@ is_token_string (token_t token, const char *str)
   return same_str && same_len;
 }
 
+bool
+is_token_equal_to (token_t *a, token_t *b)
+{
+  if (a->length != b->length)
+    return false;
+  return memcmp (a->start, b->start, a->length) == 0;
+}
+
 opcode_t
 is_token_op (token_t token)
 {
@@ -1085,6 +1093,63 @@ is_token_op (token_t token)
 }
 
 void
+emit_set_local (token_t token, block_t *block)
+{
+  if (compiler.local_count == UINT8_OVER)
+    {
+      fprintf (stderr, "Too many locals\n");
+      return;
+    }
+
+  for (int i = compiler.local_count - 1; i >= 0; i--)
+    {
+      local_t *local = &compiler.locals[i];
+      if (local->depth != -1 && local->depth < compiler.scope_depth)
+        break;
+
+      if (is_token_equal_to (&token, &local->name))
+        {
+          block_push (block, OP_SET_LOCAL);
+          block_push (block, local->depth);
+          return;
+        }
+    }
+
+  local_t *local = &compiler.locals[compiler.local_count++];
+  local->name = token;
+  local->depth = compiler.scope_depth;
+
+  block_push (block, OP_SET_LOCAL);
+  block_push (block, local->depth);
+}
+
+int
+find_local (token_t *token)
+{
+  for (int i = compiler.local_count - 1; i >= 0; i--)
+    {
+      local_t *local = &compiler.locals[i];
+      if (is_token_equal_to (token, &local->name))
+        return i;
+    }
+  return -1;
+}
+
+void
+emit_get_local (token_t token, block_t *block)
+{
+  int n = find_local (&token);
+  if (n == -1)
+    {
+      fprintf (stderr, "Couldn't find '%.*s'\n", token.length, token.start);
+      return;
+    }
+
+  block_push (block, OP_GET_LOCAL);
+  block_push (block, n);
+}
+
+void
 emit_set_global (token_t token, block_t *block)
 {
   value_t k = { .type = TYPE_OBJECT,
@@ -1110,6 +1175,8 @@ emit_word (token_t token, block_t *block)
     {
       if (*token.start == '_')
         emit_get_global (token, block);
+      else
+        emit_get_local (token, block);
       return true;
     }
 
@@ -1213,8 +1280,7 @@ parse_put_form (block_t *block)
   if (*key.start == '_')
     emit_set_global (key, block);
   else
-    // TODO
-    return false;
+    emit_set_local (key, block);
 
   return true;
 }
