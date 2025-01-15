@@ -70,6 +70,8 @@ typedef enum
   OP_CONSTANT,
   OP_SET_GLOBAL,
   OP_GET_GLOBAL,
+  OP_SET_LOCAL,
+  OP_GET_LOCAL,
   OP_NEG,
   OP_ADD,
   OP_SUB,
@@ -616,6 +618,12 @@ vm_pop ()
   return *vm.top;
 }
 
+value_t
+vm_peek ()
+{
+  return *(vm.top - 1);
+}
+
 /* DEBUG */
 
 int
@@ -647,6 +655,12 @@ dbg_disassemble_operation (block_t *block, size_t offset)
       return 2;
     case OP_GET_GLOBAL:
       printf ("GET GLOBAL\n");
+      return 2;
+    case OP_SET_LOCAL:
+      printf ("SET LOCAL %d\n", block->code[offset + 1]);
+      return 2;
+    case OP_GET_LOCAL:
+      printf ("GET LOCAL %d\n", block->code[offset + 1]);
       return 2;
     case OP_NEG:
       printf ("NEG\n");
@@ -828,6 +842,18 @@ run ()
           k = (string_t *)v.as.object;
           vm_push (table_get (&vm.globals, k)->value);
           break;
+        case OP_SET_LOCAL:
+          {
+            uint8_t offset = *vm.pc++;
+            vm.stack[offset] = vm_peek ();
+            break;
+          }
+        case OP_GET_LOCAL:
+          {
+            uint8_t offset = *vm.pc++;
+            vm_push (vm.stack[offset]);
+            break;
+          }
         case OP_NEG:
           if (!check_top_type (TYPE_NUMBER))
             return RESULT_RUNTIME_ERROR;
