@@ -7,6 +7,7 @@
 
 #define DEBUG
 #define STACK_SIZE 256
+#define UINT8_OVER 256
 #define TABLE_LOAD 0.75
 
 typedef enum
@@ -137,7 +138,7 @@ typedef struct
 
 typedef struct
 {
-  local_t locals[256];
+  local_t locals[UINT8_OVER];
   int local_count;
   int scope_depth;
 } compiler_t;
@@ -549,6 +550,26 @@ compiler_new ()
 {
   compiler.local_count = 0;
   compiler.scope_depth = 0;
+}
+
+void
+compiler_scope_create ()
+{
+  compiler.scope_depth++;
+}
+
+void
+compiler_scope_delete (block_t *block)
+{
+  compiler.scope_depth--;
+
+  while (compiler.local_count > 0
+         && compiler.locals[compiler.local_count - 1].depth
+                > compiler.scope_depth)
+    {
+      block_push (block, OP_POP);
+      compiler.local_count--;
+    }
 }
 
 /* VM FUNCTIONS */
@@ -1123,10 +1144,12 @@ parse_multiple_expressions (token_t token, block_t *block)
 bool
 parse_do_form (token_t token, block_t *block)
 {
-  compiler.scope_depth++;
+  compiler_scope_create ();
+
   if (!parse_multiple_expressions (token, block))
     return false;
-  compiler.scope_depth--;
+
+  compiler_scope_delete (block);
   return true;
 }
 
