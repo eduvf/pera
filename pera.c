@@ -83,6 +83,7 @@ typedef enum
   OP_CONCAT,
   OP_PRINT,
   OP_POP,
+  OP_END_SCOPE,
   OP_RETURN,
   OP_ERROR,
 } opcode_t;
@@ -565,12 +566,19 @@ compiler_scope_delete (block_t *block)
 {
   compiler.scope_depth--;
 
+  uint8_t n = compiler.local_count;
+
   while (compiler.local_count > 0
          && compiler.locals[compiler.local_count - 1].depth
                 > compiler.scope_depth)
+    compiler.local_count--;
+
+  n -= compiler.local_count;
+
+  if (n > 0)
     {
-      block_push (block, OP_POP);
-      compiler.local_count--;
+      block_push (block, OP_END_SCOPE);
+      block_push (block, n);
     }
 }
 
@@ -695,6 +703,9 @@ dbg_disassemble_operation (block_t *block, size_t offset)
     case OP_POP:
       printf ("POP\n");
       return 1;
+    case OP_END_SCOPE:
+      printf ("END SCOPE %d\n", block->code[offset + 1]);
+      return 2;
     case OP_RETURN:
       printf ("RETURN\n");
       return 1;
@@ -919,6 +930,13 @@ run ()
         case OP_POP:
           {
             vm_pop ();
+            break;
+          }
+        case OP_END_SCOPE:
+          {
+            uint8_t n = *vm.pc++;
+            *(vm.top - n - 1) = vm_peek ();
+            vm.top -= n;
             break;
           }
         case OP_RETURN:
