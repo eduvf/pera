@@ -1441,6 +1441,12 @@ read (const char *path)
   size_t size = ftell (file);
   rewind (file);
 
+  if (size == 0)
+    {
+      fprintf (stderr, "Empty file\n");
+      exit (1);
+    }
+
   char *buffer = malloc (size - 1);
   if (buffer == NULL)
     {
