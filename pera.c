@@ -83,6 +83,7 @@ typedef enum
   OP_CONCAT,
   OP_PRINT,
   OP_POP,
+  OP_JUMP_IF_FALSE,
   OP_END_SCOPE,
   OP_RETURN,
   OP_ERROR,
@@ -703,6 +704,9 @@ dbg_disassemble_operation (block_t *block, size_t offset)
     case OP_POP:
       printf ("POP\n");
       return 1;
+    case OP_JUMP_IF_FALSE:
+      printf ("JUMP IF FALSE\n");
+      return 3;
     case OP_END_SCOPE:
       printf ("END SCOPE %d\n", block->code[offset + 1]);
       return 2;
@@ -936,6 +940,14 @@ run ()
         case OP_POP:
           {
             vm_pop ();
+            break;
+          }
+        case OP_JUMP_IF_FALSE:
+          {
+            vm.pc += 2;
+            uint16_t offset = (vm.pc[-2] << 8) | vm.pc[-1];
+            if (!value_to_boolean (vm_peek ()))
+              vm.pc += offset;
             break;
           }
         case OP_END_SCOPE:
