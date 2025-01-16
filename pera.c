@@ -812,8 +812,6 @@ result_t
 run ()
 {
   uint8_t op;
-  value_t v;
-  string_t *k;
 
   while (1)
     {
@@ -839,20 +837,26 @@ run ()
           vm_push ((value_t){ .type = TYPE_BOOL, .as = false });
           break;
         case OP_CONSTANT:
-          v = vm.block.constants.values[*vm.pc++];
-          printf ("%g\n", v.as.number);
-          vm_push (v);
-          break;
+          {
+            value_t v = vm.block.constants.values[*vm.pc++];
+            printf ("%g\n", v.as.number);
+            vm_push (v);
+            break;
+          }
         case OP_SET_GLOBAL:
-          v = vm.block.constants.values[*vm.pc++];
-          k = (string_t *)v.as.object;
-          table_set (&vm.globals, k, vm_pop ());
-          break;
+          {
+            value_t v = vm.block.constants.values[*vm.pc++];
+            string_t *k = (string_t *)v.as.object;
+            table_set (&vm.globals, k, vm_pop ());
+            break;
+          }
         case OP_GET_GLOBAL:
-          v = vm.block.constants.values[*vm.pc++];
-          k = (string_t *)v.as.object;
-          vm_push (table_get (&vm.globals, k)->value);
-          break;
+          {
+            value_t v = vm.block.constants.values[*vm.pc++];
+            string_t *k = (string_t *)v.as.object;
+            vm_push (table_get (&vm.globals, k)->value);
+            break;
+          }
         case OP_SET_LOCAL:
           {
             uint8_t offset = *vm.pc++;
@@ -866,10 +870,12 @@ run ()
             break;
           }
         case OP_NEG:
-          if (!check_top_type (TYPE_NUMBER))
-            return RESULT_RUNTIME_ERROR;
-          vm_push (value_from_number (-vm_pop ().as.number));
-          break;
+          {
+            if (!check_top_type (TYPE_NUMBER))
+              return RESULT_RUNTIME_ERROR;
+            vm_push (value_from_number (-vm_pop ().as.number));
+            break;
+          }
         case OP_ADD:
           BINARY_OP (+);
           break;
