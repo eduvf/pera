@@ -1332,6 +1332,15 @@ parse_put_form (block_t *block)
   return true;
 }
 
+int
+emit_jump (block_t *block, opcode_t op)
+{
+  block_push (block, op);
+  block_push (block, 0);
+  block_push (block, 0);
+  return block->length - 2;
+}
+
 void
 patch_jump (block_t *block, int offset)
 {
@@ -1354,11 +1363,7 @@ parse_if_form (block_t *block)
   if (!parse_expression (token, block))
     return false;
 
-  block_push (block, OP_JUMP_IF_FALSE);
-  block_push (block, 0);
-  block_push (block, 0);
-
-  int offset = block->length - 2;
+  int then_offset = emit_jump (block, OP_JUMP_IF_FALSE);
 
   block_push (block, OP_POP);
 
@@ -1366,24 +1371,20 @@ parse_if_form (block_t *block)
   if (!parse_expression (token, block))
     return false;
 
-  block_push (block, OP_JUMP);
-  block_push (block, 0);
-  block_push (block, 0);
+  int else_offset = emit_jump (block, OP_JUMP);
 
-  patch_jump (block, offset);
+  patch_jump (block, then_offset);
 
   token = scan_token ();
   if (token.type == TOKEN_RPAREN)
     return true;
 
-  offset = block->length - 2;
-
   block_push (block, OP_POP);
 
   if (!parse_expression (token, block))
     return false;
 
-  patch_jump (block, offset);
+  patch_jump (block, else_offset);
 
   token = scan_token ();
   if (token.type != TOKEN_RPAREN)
