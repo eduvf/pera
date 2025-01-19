@@ -1322,6 +1322,44 @@ parse_put_form (block_t *block)
 }
 
 bool
+parse_if_form (block_t *block)
+{
+  token_t token = scan_token ();
+  if (!parse_expression (token, block))
+    return false;
+
+  block_push (block, OP_JUMP_IF_FALSE);
+  block_push (block, 0);
+  block_push (block, 0);
+
+  int offset = block->length - 2;
+
+  token = scan_token ();
+  if (!parse_expression (token, block))
+    return false;
+
+  int jump = block->length - offset - 2;
+
+  if (jump > UINT16_MAX)
+    {
+      fprintf (stderr, "'if' jump is too large\n");
+      return false;
+    }
+
+  block->code[offset] = (jump >> 8) & 0xff;
+  block->code[offset + 1] = jump & 0xff;
+
+  token = scan_token ();
+  if (token.type != TOKEN_RPAREN)
+    {
+      fprintf (stderr, "Missing ')' or too much arguments for 'if'\n");
+      return false;
+    }
+
+  return true;
+}
+
+bool
 parse_expression (token_t token, block_t *block)
 {
   switch (token.type)
@@ -1355,6 +1393,9 @@ parse_expression (token_t token, block_t *block)
 
         if (is_token_string (first_token, "put"))
           return parse_put_form (block);
+
+        if (is_token_string (first_token, "if"))
+          return parse_if_form (block);
 
         if (!parse_multiple_expressions (token, block))
           return false;
