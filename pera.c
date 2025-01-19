@@ -1345,11 +1345,39 @@ parse_if_form (block_t *block)
 
   int offset = block->length - 2;
 
+  block_push (block, OP_POP);
+
   token = scan_token ();
   if (!parse_expression (token, block))
     return false;
 
+  block_push (block, OP_JUMP);
+  block_push (block, 0);
+  block_push (block, 0);
+
   int jump = block->length - offset - 2;
+
+  if (jump > UINT16_MAX)
+    {
+      fprintf (stderr, "'if' jump is too large\n");
+      return false;
+    }
+
+  block->code[offset] = (jump >> 8) & 0xff;
+  block->code[offset + 1] = jump & 0xff;
+
+  token = scan_token ();
+  if (token.type == TOKEN_RPAREN)
+    return true;
+
+  offset = block->length - 2;
+
+  block_push (block, OP_POP);
+
+  if (!parse_expression (token, block))
+    return false;
+
+  jump = block->length - offset - 2;
 
   if (jump > UINT16_MAX)
     {
