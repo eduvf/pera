@@ -578,7 +578,7 @@ compiler_scope_delete (block_t *block)
 
   n -= compiler.local_count;
 
-  if (n > 0)
+  if (n > 1)
     {
       block_push (block, OP_END_SCOPE);
       block_push (block, n);
