@@ -1157,7 +1157,8 @@ emit_set_local (token_t token, block_t *block)
       if (is_token_equal_to (&token, &local->name))
         {
           block_push (block, OP_SET_LOCAL);
-          block_push (block, local->depth);
+          block_push (block, i);
+          block_push (block, OP_POP);
           return;
         }
     }
@@ -1167,7 +1168,7 @@ emit_set_local (token_t token, block_t *block)
   local->depth = compiler.scope_depth;
 
   block_push (block, OP_SET_LOCAL);
-  block_push (block, local->depth);
+  block_push (block, compiler.local_count - 1);
 }
 
 int
