@@ -1408,6 +1408,55 @@ parse_if_form (block_t *block)
   return true;
 }
 
+void
+emit_loop (block_t *block, int start)
+{
+  block_push (block, OP_LOOP);
+
+  int offset = block->length - start + 2;
+  if (offset > UINT16_MAX)
+    {
+      fprintf (stderr, "'while' jump is too large\n");
+      exit (1);
+    }
+
+  block_push (block, (offset >> 8) & 0xff);
+  block_push (block, offset & 0xff);
+}
+
+bool
+parse_while_form (block_t *block)
+{
+  int start_offset = block->length;
+
+  token_t token = scan_token ();
+  if (!parse_expression (token, block))
+    return false;
+
+  int end_loop_offset = emit_jump (block, OP_JUMP_IF_FALSE);
+
+  block_push (block, OP_POP);
+
+  token = scan_token ();
+  if (!parse_expression (token, block))
+    return false;
+
+  emit_loop (block, start_offset);
+
+  patch_jump (block, end_loop_offset);
+
+  block_push (block, OP_POP);
+
+  token = scan_token ();
+  if (token.type != TOKEN_RPAREN)
+    {
+      fprintf (stderr, "Missing ')' or too much arguments for 'if'\n");
+      return false;
+    }
+
+  return true;
+}
+
 bool
 parse_expression (token_t token, block_t *block)
 {
@@ -1445,6 +1494,9 @@ parse_expression (token_t token, block_t *block)
 
         if (is_token_string (first_token, "if"))
           return parse_if_form (block);
+
+        if (is_token_string (first_token, "while"))
+          return parse_while_form (block);
 
         if (!parse_multiple_expressions (token, block))
           return false;
