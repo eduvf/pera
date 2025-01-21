@@ -183,19 +183,7 @@ value_objects_are_equal (value_t v1, value_t v2)
   object_t *o1 = v1.as.object;
   object_t *o2 = v2.as.object;
 
-  switch (o1->type)
-    {
-    case OBJECT_STRING:
-      {
-        string_t *s1 = (string_t *)o1;
-        string_t *s2 = (string_t *)o2;
-        return s1 == s2;
-      }
-    case OBJECT_FUNCTION:
-      {
-        return o1 == o2;
-      }
-    }
+  return o1->type == o2->type && o1 == o2;
 }
 
 bool
@@ -968,11 +956,10 @@ run ()
           }
         case OP_EQ:
           {
-            if (!check_top_2_type (TYPE_NUMBER))
-              return RESULT_RUNTIME_ERROR;
-            double b = vm_pop ().as.number;
-            double a = vm_pop ().as.number;
-            vm_push ((value_t){ .type = TYPE_BOOL, .as = a == b });
+            value_t b = vm_pop ();
+            value_t a = vm_pop ();
+            bool result = value_are_equal (a, b);
+            vm_push ((value_t){ .type = TYPE_BOOL, .as = result });
             break;
           }
         case OP_CONCAT:
