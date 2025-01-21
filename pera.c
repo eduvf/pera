@@ -31,14 +31,6 @@ typedef struct object
 
 typedef struct
 {
-  object_t object;
-  int length;
-  uint32_t hash;
-  char *chars;
-} string_t;
-
-typedef struct
-{
   value_type_t type;
   union
   {
@@ -47,6 +39,29 @@ typedef struct
     object_t *object;
   } as;
 } value_t;
+
+typedef struct
+{
+  int length;
+  int capacity;
+  value_t *values;
+} array_t;
+
+typedef struct
+{
+  int length;
+  int capacity;
+  uint8_t *code;
+  array_t constants;
+} block_t;
+
+typedef struct
+{
+  object_t object;
+  int length;
+  uint32_t hash;
+  char *chars;
+} string_t;
 
 typedef struct
 {
@@ -120,21 +135,6 @@ typedef struct
   const char *start;
   const char *current;
 } scan_t;
-
-typedef struct
-{
-  int length;
-  int capacity;
-  value_t *values;
-} array_t;
-
-typedef struct
-{
-  int length;
-  int capacity;
-  uint8_t *code;
-  array_t constants;
-} block_t;
 
 typedef struct
 {
