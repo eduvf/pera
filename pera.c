@@ -21,6 +21,7 @@ typedef enum
 typedef enum
 {
   OBJECT_STRING,
+  OBJECT_FUNCTION,
 } object_type_t;
 
 typedef struct object
@@ -62,6 +63,14 @@ typedef struct
   uint32_t hash;
   char *chars;
 } string_t;
+
+typedef struct
+{
+  object_t object;
+  int arity;
+  block_t block;
+  string_t *name;
+} function_t;
 
 typedef struct
 {
@@ -521,6 +530,32 @@ string_copy (char *chars, int length)
   return string_allocate (chars, length);
 }
 
+/* FUNCTION FUNCTIONS */
+
+void
+function_free (function_t *f)
+{
+  block_free (&f->block);
+  free (f);
+}
+
+function_t *
+function_new ()
+{
+  function_t *f = malloc (sizeof (function_t));
+  object_t *o = (object_t *)f;
+
+  f->arity = 0;
+  f->name = NULL;
+  block_new (&f->block);
+
+  o->type = OBJECT_FUNCTION;
+  o->next = vm.objects;
+  vm.objects = o;
+
+  return f;
+}
+
 /* GC FUNCTIONS */
 
 void
@@ -532,6 +567,12 @@ gc_free_object (object_t *object)
       {
         string_t *string = (string_t *)object;
         string_free (string);
+        break;
+      }
+    case OBJECT_FUNCTION:
+      {
+        function_t *function = (function_t *)object;
+        function_free (function);
         break;
       }
     }
