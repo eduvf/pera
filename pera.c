@@ -191,6 +191,10 @@ value_objects_are_equal (value_t v1, value_t v2)
         string_t *s2 = (string_t *)o2;
         return s1 == s2;
       }
+    case OBJECT_FUNCTION:
+      {
+        return o1 == o2;
+      }
     }
 }
 
@@ -843,6 +847,12 @@ print_value (value_t v)
           {
             string_t *s = (string_t *)v.as.object;
             printf ("\"%s\"", s->chars);
+            break;
+          }
+        case OBJECT_FUNCTION:
+          {
+            function_t *f = (function_t *)v.as.object;
+            printf ("<function %s>", f->name->chars);
             break;
           }
         }
