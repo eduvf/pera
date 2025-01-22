@@ -267,8 +267,9 @@ get_block ()
 }
 
 void
-block_push (block_t *block, uint8_t byte)
+block_push (uint8_t byte)
 {
+  block_t *block = get_block ();
   if (block->capacity < block->length + 1)
     {
       block->capacity *= 2;
@@ -282,8 +283,9 @@ block_push (block_t *block, uint8_t byte)
 }
 
 int
-block_add_constant (block_t *block, value_t value)
+block_add_constant (value_t value)
 {
+  block_t *block = get_block ();
   int i = array_find (&block->constants, value);
   if (i >= 0)
     return i;
@@ -293,17 +295,17 @@ block_add_constant (block_t *block, value_t value)
 }
 
 void
-block_push_constant (block_t *block, value_t value, opcode_t op)
+block_push_constant (value_t value, opcode_t op)
 {
-  int constant = block_add_constant (block, value);
+  int constant = block_add_constant (value);
   if (constant > UINT8_MAX)
     {
       fprintf (stderr, "Too many constants in block.\n");
       exit (1);
     }
 
-  block_push (block, op);
-  block_push (block, constant);
+  block_push (op);
+  block_push (constant);
 }
 
 void
@@ -604,7 +606,7 @@ compiler_scope_create ()
 }
 
 void
-compiler_scope_delete (block_t *block)
+compiler_scope_delete ()
 {
   compiler.scope_depth--;
 
@@ -619,8 +621,8 @@ compiler_scope_delete (block_t *block)
 
   if (n > 1)
     {
-      block_push (block, OP_END_SCOPE);
-      block_push (block, n);
+      block_push (OP_END_SCOPE);
+      block_push (n);
     }
 }
 
@@ -677,8 +679,9 @@ vm_peek ()
 /* DEBUG */
 
 int
-dbg_disassemble_operation (block_t *block, size_t offset)
+dbg_disassemble_operation (size_t offset)
 {
+  block_t *block = get_block ();
   uint8_t constant;
   value_t value;
 
@@ -767,12 +770,13 @@ dbg_disassemble_operation (block_t *block, size_t offset)
 }
 
 void
-dbg_disassemble_all (block_t *block)
+dbg_disassemble_all ()
 {
+  block_t *block = get_block ();
   for (size_t offset = 0; offset < block->length;)
     {
       printf ("%04zx ", offset);
-      offset += dbg_disassemble_operation (block, offset);
+      offset += dbg_disassemble_operation (offset);
     }
 }
 
@@ -880,8 +884,7 @@ run ()
           printf ("]");
         }
       printf ("\n");
-      dbg_disassemble_operation (get_block (),
-                                 (int)(vm.pc - get_block ()->code));
+      dbg_disassemble_operation ((int)(vm.pc - get_block ()->code));
 #endif
       switch (op = *vm.pc++)
         {
@@ -1196,7 +1199,7 @@ is_token_op (token_t token)
 }
 
 void
-emit_set_local (token_t token, block_t *block)
+emit_set_local (token_t token)
 {
   if (compiler.local_count == UINT8_OVER)
     {
@@ -1212,9 +1215,9 @@ emit_set_local (token_t token, block_t *block)
 
       if (is_token_equal_to (&token, &local->name))
         {
-          block_push (block, OP_SET_LOCAL);
-          block_push (block, i);
-          block_push (block, OP_POP);
+          block_push (OP_SET_LOCAL);
+          block_push (i);
+          block_push (OP_POP);
           return;
         }
     }
@@ -1223,8 +1226,8 @@ emit_set_local (token_t token, block_t *block)
   local->name = token;
   local->depth = compiler.scope_depth;
 
-  block_push (block, OP_SET_LOCAL);
-  block_push (block, compiler.local_count - 1);
+  block_push (OP_SET_LOCAL);
+  block_push (compiler.local_count - 1);
 }
 
 int
@@ -1240,7 +1243,7 @@ find_local (token_t *token)
 }
 
 void
-emit_get_local (token_t token, block_t *block)
+emit_get_local (token_t token)
 {
   int n = find_local (&token);
   if (n == -1)
@@ -1249,42 +1252,42 @@ emit_get_local (token_t token, block_t *block)
       return;
     }
 
-  block_push (block, OP_GET_LOCAL);
-  block_push (block, n);
+  block_push (OP_GET_LOCAL);
+  block_push (n);
 }
 
 void
-emit_set_global (token_t token, block_t *block)
+emit_set_global (token_t token)
 {
   value_t k = { .type = TYPE_OBJECT,
                 .as.object = (object_t *)string_copy ((char *)token.start,
                                                       token.length) };
-  block_push_constant (block, k, OP_SET_GLOBAL);
+  block_push_constant (k, OP_SET_GLOBAL);
 }
 
 void
-emit_get_global (token_t token, block_t *block)
+emit_get_global (token_t token)
 {
   value_t k = { .type = TYPE_OBJECT,
                 .as.object = (object_t *)string_copy ((char *)token.start,
                                                       token.length) };
-  block_push_constant (block, k, OP_GET_GLOBAL);
+  block_push_constant (k, OP_GET_GLOBAL);
 }
 
 bool
-emit_word (token_t token, block_t *block)
+emit_word (token_t token)
 {
   opcode_t op = is_token_op (token);
   if (op == OP_ERROR)
     {
       if (*token.start == '_')
-        emit_get_global (token, block);
+        emit_get_global (token);
       else
-        emit_get_local (token, block);
+        emit_get_local (token);
       return true;
     }
 
-  block_push (block, op);
+  block_push (op);
 
 #ifdef DEBUG
   printf ("emit byte '%.*s'\n", token.length, token.start);
@@ -1293,38 +1296,38 @@ emit_word (token_t token, block_t *block)
 }
 
 void
-emit_number (token_t token, block_t *block)
+emit_number (token_t token)
 {
   double n = strtod (token.start, NULL);
 
-  block_push_constant (block, value_from_number (n), OP_CONSTANT);
+  block_push_constant (value_from_number (n), OP_CONSTANT);
 }
 
 void
-emit_string (token_t token, block_t *block)
+emit_string (token_t token)
 {
   value_t v = { .type = TYPE_OBJECT,
                 .as.object = (object_t *)string_copy ((char *)token.start,
                                                       token.length) };
 
-  block_push_constant (block, v, OP_CONSTANT);
+  block_push_constant (v, OP_CONSTANT);
 
 #ifdef DEBUG
   printf ("string '%.*s'\n", token.length, token.start);
 #endif
 }
 
-bool parse_expression (token_t token, block_t *block);
+bool parse_expression (token_t token);
 
 bool
-parse_multiple_expressions (token_t token, block_t *block)
+parse_multiple_expressions (token_t token)
 {
   do
     {
       token = scan_token ();
       if (token.type == TOKEN_RPAREN || token.type == TOKEN_END)
         break;
-      if (!parse_expression (token, block))
+      if (!parse_expression (token))
         return false;
     }
   while (1);
@@ -1339,19 +1342,19 @@ parse_multiple_expressions (token_t token, block_t *block)
 }
 
 bool
-parse_do_form (token_t token, block_t *block)
+parse_do_form (token_t token)
 {
   compiler_scope_create ();
 
-  if (!parse_multiple_expressions (token, block))
+  if (!parse_multiple_expressions (token))
     return false;
 
-  compiler_scope_delete (block);
+  compiler_scope_delete ();
   return true;
 }
 
 bool
-parse_put_form (block_t *block)
+parse_put_form ()
 {
   token_t key = scan_token ();
   token_t next_token = scan_token ();
@@ -1369,8 +1372,8 @@ parse_put_form (block_t *block)
     }
 
   if (next_token.type == TOKEN_RPAREN)
-    block_push (block, OP_NIL);
-  else if (!parse_expression (next_token, block))
+    block_push (OP_NIL);
+  else if (!parse_expression (next_token))
     return false;
 
   next_token = scan_token ();
@@ -1382,25 +1385,27 @@ parse_put_form (block_t *block)
 
   // if key starts with '_', make it global
   if (*key.start == '_')
-    emit_set_global (key, block);
+    emit_set_global (key);
   else
-    emit_set_local (key, block);
+    emit_set_local (key);
 
   return true;
 }
 
 int
-emit_jump (block_t *block, opcode_t op)
+emit_jump (opcode_t op)
 {
-  block_push (block, op);
-  block_push (block, 0);
-  block_push (block, 0);
+  block_t *block = get_block ();
+  block_push (op);
+  block_push (0);
+  block_push (0);
   return block->length - 2;
 }
 
 void
-patch_jump (block_t *block, int offset)
+patch_jump (int offset)
 {
+  block_t *block = get_block ();
   int jump = block->length - offset - 2;
 
   if (jump > UINT16_MAX)
@@ -1414,34 +1419,34 @@ patch_jump (block_t *block, int offset)
 }
 
 bool
-parse_if_form (block_t *block)
+parse_if_form ()
 {
   token_t token = scan_token ();
-  if (!parse_expression (token, block))
+  if (!parse_expression (token))
     return false;
 
-  int then_offset = emit_jump (block, OP_JUMP_IF_FALSE);
+  int then_offset = emit_jump (OP_JUMP_IF_FALSE);
 
-  block_push (block, OP_POP);
+  block_push (OP_POP);
 
   token = scan_token ();
-  if (!parse_expression (token, block))
+  if (!parse_expression (token))
     return false;
 
-  int else_offset = emit_jump (block, OP_JUMP);
+  int else_offset = emit_jump (OP_JUMP);
 
-  patch_jump (block, then_offset);
+  patch_jump (then_offset);
 
   token = scan_token ();
   if (token.type == TOKEN_RPAREN)
     return true;
 
-  block_push (block, OP_POP);
+  block_push (OP_POP);
 
-  if (!parse_expression (token, block))
+  if (!parse_expression (token))
     return false;
 
-  patch_jump (block, else_offset);
+  patch_jump (else_offset);
 
   token = scan_token ();
   if (token.type != TOKEN_RPAREN)
@@ -1454,9 +1459,10 @@ parse_if_form (block_t *block)
 }
 
 void
-emit_loop (block_t *block, int start)
+emit_loop (int start)
 {
-  block_push (block, OP_LOOP);
+  block_t *block = get_block ();
+  block_push (OP_LOOP);
 
   int offset = block->length - start + 2;
   if (offset > UINT16_MAX)
@@ -1465,32 +1471,33 @@ emit_loop (block_t *block, int start)
       exit (1);
     }
 
-  block_push (block, (offset >> 8) & 0xff);
-  block_push (block, offset & 0xff);
+  block_push ((offset >> 8) & 0xff);
+  block_push (offset & 0xff);
 }
 
 bool
-parse_while_form (block_t *block)
+parse_while_form ()
 {
+  block_t *block = get_block ();
   int start_offset = block->length;
 
   token_t token = scan_token ();
-  if (!parse_expression (token, block))
+  if (!parse_expression (token))
     return false;
 
-  int end_loop_offset = emit_jump (block, OP_JUMP_IF_FALSE);
+  int end_loop_offset = emit_jump (OP_JUMP_IF_FALSE);
 
-  block_push (block, OP_POP);
+  block_push (OP_POP);
 
   token = scan_token ();
-  if (!parse_expression (token, block))
+  if (!parse_expression (token))
     return false;
 
-  emit_loop (block, start_offset);
+  emit_loop (start_offset);
 
-  patch_jump (block, end_loop_offset);
+  patch_jump (end_loop_offset);
 
-  block_push (block, OP_POP);
+  block_push (OP_POP);
 
   token = scan_token ();
   if (token.type != TOKEN_RPAREN)
@@ -1503,7 +1510,7 @@ parse_while_form (block_t *block)
 }
 
 bool
-parse_expression (token_t token, block_t *block)
+parse_expression (token_t token)
 {
   switch (token.type)
     {
@@ -1532,44 +1539,44 @@ parse_expression (token_t token, block_t *block)
           }
 
         if (is_token_string (first_token, "do"))
-          return parse_do_form (token, block);
+          return parse_do_form (token);
 
         if (is_token_string (first_token, "put"))
-          return parse_put_form (block);
+          return parse_put_form ();
 
         if (is_token_string (first_token, "if"))
-          return parse_if_form (block);
+          return parse_if_form ();
 
         if (is_token_string (first_token, "while"))
-          return parse_while_form (block);
+          return parse_while_form ();
 
-        if (!parse_multiple_expressions (token, block))
+        if (!parse_multiple_expressions (token))
           return false;
 
-        if (!emit_word (first_token, block))
+        if (!emit_word (first_token))
           return false;
 
         return true;
       }
     case TOKEN_WORD:
       {
-        if (!emit_word (token, block))
+        if (!emit_word (token))
           return false;
         return true;
       }
     case TOKEN_NUMBER:
       {
-        emit_number (token, block);
+        emit_number (token);
         return true;
       }
     case TOKEN_STRING:
       {
-        emit_string (token, block);
+        emit_string (token);
         return true;
       }
     case TOKEN_END:
       {
-        block_push (block, OP_RETURN);
+        block_push (OP_RETURN);
         return true;
       }
     }
@@ -1579,14 +1586,14 @@ parse_expression (token_t token, block_t *block)
 }
 
 bool
-compile_block (const char *source, block_t *block)
+compile_block (const char *source)
 {
   scan_new (source);
   while (1)
     {
       token_t token = scan_token ();
 
-      if (!parse_expression (token, block))
+      if (!parse_expression (token))
         return false;
 
       if (token.type == TOKEN_END)
@@ -1600,11 +1607,11 @@ interpret (char *source)
 {
   result_t result;
 
-  if (!compile_block (source, get_block ()))
+  if (!compile_block (source))
     return RESULT_COMPILE_ERROR;
 
 #ifdef DEBUG
-  dbg_disassemble_all (get_block ());
+  dbg_disassemble_all ();
 #endif
 
   vm.pc = vm.block.code;
