@@ -260,6 +260,12 @@ block_new (block_t *block)
   array_new (&block->constants);
 }
 
+block_t *
+get_block ()
+{
+  return &vm.block;
+}
+
 void
 block_push (block_t *block, uint8_t byte)
 {
