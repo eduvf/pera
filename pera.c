@@ -880,7 +880,8 @@ run ()
           printf ("]");
         }
       printf ("\n");
-      dbg_disassemble_operation (&vm.block, (int)(vm.pc - vm.block.code));
+      dbg_disassemble_operation (get_block (),
+                                 (int)(vm.pc - get_block ()->code));
 #endif
       switch (op = *vm.pc++)
         {
@@ -895,21 +896,21 @@ run ()
           break;
         case OP_CONSTANT:
           {
-            value_t v = vm.block.constants.values[*vm.pc++];
+            value_t v = get_block ()->constants.values[*vm.pc++];
             printf ("%g\n", v.as.number);
             vm_push (v);
             break;
           }
         case OP_SET_GLOBAL:
           {
-            value_t v = vm.block.constants.values[*vm.pc++];
+            value_t v = get_block ()->constants.values[*vm.pc++];
             string_t *k = (string_t *)v.as.object;
             table_set (&vm.globals, k, vm_pop ());
             break;
           }
         case OP_GET_GLOBAL:
           {
-            value_t v = vm.block.constants.values[*vm.pc++];
+            value_t v = get_block ()->constants.values[*vm.pc++];
             string_t *k = (string_t *)v.as.object;
             vm_push (table_get (&vm.globals, k)->value);
             break;
@@ -1599,11 +1600,11 @@ interpret (char *source)
 {
   result_t result;
 
-  if (!compile_block (source, &vm.block))
+  if (!compile_block (source, get_block ()))
     return RESULT_COMPILE_ERROR;
 
 #ifdef DEBUG
-  dbg_disassemble_all (&vm.block);
+  dbg_disassemble_all (get_block ());
 #endif
 
   vm.pc = vm.block.code;
