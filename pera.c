@@ -64,6 +64,12 @@ typedef struct
   char *chars;
 } string_t;
 
+typedef enum
+{
+  FUNCTION_TOP_LEVEL,
+  FUNCTION_USER_DEFINED,
+} function_type_t;
+
 typedef struct
 {
   object_t object;
@@ -153,6 +159,8 @@ typedef struct
 
 typedef struct
 {
+  function_t *function;
+  function_type_t type;
   local_t locals[UINT8_OVER];
   int local_count;
   int scope_depth;
@@ -160,7 +168,6 @@ typedef struct
 
 typedef struct
 {
-  block_t block;
   uint8_t *pc;
   value_t stack[STACK_SIZE];
   value_t *top;
@@ -263,7 +270,7 @@ block_new (block_t *block)
 block_t *
 get_block ()
 {
-  return &vm.block;
+  return &compiler.function->block;
 }
 
 void
@@ -611,8 +618,21 @@ gc_free_all ()
 void
 compiler_new ()
 {
+  compiler.function = function_new ();
+  compiler.type = FUNCTION_TOP_LEVEL;
   compiler.local_count = 0;
   compiler.scope_depth = 0;
+
+  local_t *local = &compiler.locals[compiler.local_count++];
+  local->depth = 0;
+  local->name.start = "";
+  local->name.length = 0;
+}
+
+void
+compiler_free ()
+{
+  function_free (compiler.function);
 }
 
 void
@@ -651,7 +671,6 @@ vm_new ()
   vm.objects = NULL;
   table_new (&vm.strings);
   table_new (&vm.globals);
-  block_new (&vm.block);
 }
 
 void
@@ -659,15 +678,14 @@ vm_free ()
 {
   table_free (&vm.strings);
   table_free (&vm.globals);
-  block_free (&vm.block);
   gc_free_all ();
 }
 
 void
 vm_reset ()
 {
-  block_free (&vm.block);
-  block_new (&vm.block);
+  compiler_free ();
+  compiler_new ();
   vm.objects = NULL;
   vm.top = vm.stack;
 }
@@ -1630,7 +1648,7 @@ interpret (char *source)
   dbg_disassemble_all ();
 #endif
 
-  vm.pc = vm.block.code;
+  vm.pc = get_block ()->code;
   result = run ();
 
   return result;
@@ -1740,6 +1758,7 @@ main (int argc, const char *argv[])
       exit (1);
     }
 
+  compiler_free ();
   vm_free ();
   return 0;
 }
