@@ -465,6 +465,32 @@ hash_from_string (const char *string, int length)
   return hash;
 }
 
+/* OBJECT FUNCTIONS */
+
+size_t
+object_sizeof (object_type_t type)
+{
+  switch (type)
+    {
+    case OBJECT_STRING:
+      return sizeof (string_t);
+    case OBJECT_FUNCTION:
+      return sizeof (function_t);
+    }
+}
+
+object_t *
+object_new (object_type_t type)
+{
+  size_t size = object_sizeof (type);
+
+  object_t *o = malloc (size);
+  o->type = type;
+  o->next = vm.objects;
+  vm.objects = o;
+  return o;
+}
+
 /* STRING FUNCTIONS */
 
 void
@@ -478,8 +504,7 @@ string_free (string_t *string)
 string_t *
 string_new (char *chars, int length)
 {
-  string_t *s = malloc (sizeof (string_t));
-  object_t *o = (object_t *)s;
+  string_t *s = (string_t *)object_new (OBJECT_STRING);
 
   s->length = length;
   s->chars = chars;
@@ -491,10 +516,6 @@ string_new (char *chars, int length)
       string_free (s);
       return interned;
     }
-
-  o->type = OBJECT_STRING;
-  o->next = vm.objects;
-  vm.objects = o;
 
   table_set (&vm.strings, s, (value_t){ .type = TYPE_NIL });
   return s;
@@ -542,16 +563,11 @@ function_free (function_t *f)
 function_t *
 function_new ()
 {
-  function_t *f = malloc (sizeof (function_t));
-  object_t *o = (object_t *)f;
+  function_t *f = (function_t *)object_new (OBJECT_FUNCTION);
 
   f->arity = 0;
   f->name = NULL;
   block_new (&f->block);
-
-  o->type = OBJECT_FUNCTION;
-  o->next = vm.objects;
-  vm.objects = o;
 
   return f;
 }
