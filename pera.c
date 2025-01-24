@@ -623,12 +623,13 @@ compiler_new (compiler_t *compiler)
   compiler->local_count = 0;
   compiler->scope_depth = 0;
 
-  // local_t *local = &compiler.locals[compiler.local_count++];
-  // local->depth = 0;
-  // local->name.start = "";
-  // local->name.length = 0;
+  local_t *local = &compiler->locals[compiler->local_count++];
+  local->depth = 0;
+  local->name.start = "";
+  local->name.length = 0;
 
   current = compiler;
+  block_push (OP_NIL);
 }
 
 void
