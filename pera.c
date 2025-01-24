@@ -1622,7 +1622,7 @@ parse_expression (token_t token)
   return false;
 }
 
-bool
+function_t *
 compile_block (const char *source)
 {
   scan_new (source);
@@ -1631,12 +1631,12 @@ compile_block (const char *source)
       token_t token = scan_token ();
 
       if (!parse_expression (token))
-        return false;
+        return NULL;
 
       if (token.type == TOKEN_END)
         break;
     }
-  return true;
+  return current->function;
 }
 
 result_t
@@ -1644,7 +1644,7 @@ interpret (char *source)
 {
   result_t result;
 
-  if (!compile_block (source))
+  if (compile_block (source) == NULL)
     return RESULT_COMPILE_ERROR;
 
 #ifdef DEBUG
