@@ -178,8 +178,8 @@ typedef struct
 
 /* GLOBALS */
 
+compiler_t *current;
 scan_t scan;
-compiler_t compiler;
 vm_t vm;
 
 /* COMPARE VALUES */
@@ -270,7 +270,7 @@ block_new (block_t *block)
 block_t *
 get_block ()
 {
-  return &compiler.function->block;
+  return &current->function->block;
 }
 
 void
@@ -616,44 +616,46 @@ gc_free_all ()
 /* COMPILER FUNCTIONS */
 
 void
-compiler_new ()
+compiler_new (compiler_t *compiler)
 {
-  compiler.function = function_new ();
-  compiler.type = FUNCTION_TOP_LEVEL;
-  compiler.local_count = 0;
-  compiler.scope_depth = 0;
+  compiler->function = function_new ();
+  compiler->type = FUNCTION_TOP_LEVEL;
+  compiler->local_count = 0;
+  compiler->scope_depth = 0;
 
   // local_t *local = &compiler.locals[compiler.local_count++];
   // local->depth = 0;
   // local->name.start = "";
   // local->name.length = 0;
+
+  current = compiler;
 }
 
 void
-compiler_free ()
+compiler_free (compiler_t *compiler)
 {
-  function_free (compiler.function);
+  function_free (compiler->function);
 }
 
 void
 compiler_scope_create ()
 {
-  compiler.scope_depth++;
+  current->scope_depth++;
 }
 
 void
 compiler_scope_delete ()
 {
-  compiler.scope_depth--;
+  current->scope_depth--;
 
-  uint8_t n = compiler.local_count;
+  uint8_t n = current->local_count;
 
-  while (compiler.local_count > 0
-         && compiler.locals[compiler.local_count - 1].depth
-                > compiler.scope_depth)
-    compiler.local_count--;
+  while (current->local_count > 0
+         && current->locals[current->local_count - 1].depth
+                > current->scope_depth)
+    current->local_count--;
 
-  n -= compiler.local_count;
+  n -= current->local_count;
 
   if (n > 1)
     {
@@ -684,8 +686,8 @@ vm_free ()
 void
 vm_reset ()
 {
-  compiler_free ();
-  compiler_new ();
+  compiler_free (current);
+  compiler_new (current);
   vm.objects = NULL;
   vm.top = vm.stack;
 }
@@ -1235,16 +1237,16 @@ is_token_op (token_t token)
 void
 emit_set_local (token_t token)
 {
-  if (compiler.local_count == UINT8_OVER)
+  if (current->local_count == UINT8_OVER)
     {
       fprintf (stderr, "Too many locals\n");
       return;
     }
 
-  for (int i = compiler.local_count - 1; i >= 0; i--)
+  for (int i = current->local_count - 1; i >= 0; i--)
     {
-      local_t *local = &compiler.locals[i];
-      if (local->depth != -1 && local->depth < compiler.scope_depth)
+      local_t *local = &current->locals[i];
+      if (local->depth != -1 && local->depth < current->scope_depth)
         break;
 
       if (is_token_equal_to (&token, &local->name))
@@ -1256,20 +1258,20 @@ emit_set_local (token_t token)
         }
     }
 
-  local_t *local = &compiler.locals[compiler.local_count++];
+  local_t *local = &current->locals[current->local_count++];
   local->name = token;
-  local->depth = compiler.scope_depth;
+  local->depth = current->scope_depth;
 
   block_push (OP_SET_LOCAL);
-  block_push (compiler.local_count - 1);
+  block_push (current->local_count - 1);
 }
 
 int
 find_local (token_t *token)
 {
-  for (int i = compiler.local_count - 1; i >= 0; i--)
+  for (int i = current->local_count - 1; i >= 0; i--)
     {
-      local_t *local = &compiler.locals[i];
+      local_t *local = &current->locals[i];
       if (is_token_equal_to (token, &local->name))
         return i;
     }
@@ -1744,8 +1746,10 @@ init_message ()
 int
 main (int argc, const char *argv[])
 {
+  compiler_t compiler;
+
   vm_new ();
-  compiler_new ();
+  compiler_new (&compiler);
 
   init_message ();
   if (argc == 1)
@@ -1758,7 +1762,7 @@ main (int argc, const char *argv[])
       exit (1);
     }
 
-  compiler_free ();
+  compiler_free (&compiler);
   vm_free ();
   return 0;
 }
