@@ -178,7 +178,7 @@ typedef struct
 {
   call_t calls[FRAMES_MAX];
   int call_count;
-  uint8_t *pc;
+  // uint8_t *pc;
   value_t stack[STACK_SIZE];
   value_t *top;
   table_t strings;
@@ -639,7 +639,6 @@ compiler_new (compiler_t *compiler)
   local->name.length = 0;
 
   current = compiler;
-  block_push (OP_NIL);
 }
 
 void
@@ -898,7 +897,10 @@ print_value (value_t v)
         case OBJECT_FUNCTION:
           {
             function_t *f = (function_t *)v.as.object;
-            printf ("<function %s>", f->name->chars);
+            if (f->name == NULL)
+              printf ("<main>");
+            else
+              printf ("<function %s>", f->name->chars);
             break;
           }
         }
@@ -920,6 +922,9 @@ print_value (value_t v)
 result_t
 run ()
 {
+  call_t *call = &vm.calls[vm.call_count - 1];
+  value_t *stack = call->slots;
+  uint8_t *pc = call->pc;
   uint8_t op;
 
   while (1)
@@ -932,9 +937,9 @@ run ()
           printf ("]");
         }
       printf ("\n");
-      dbg_disassemble_operation ((int)(vm.pc - get_block ()->code));
+      dbg_disassemble_operation ((int)(pc - get_block ()->code));
 #endif
-      switch (op = *vm.pc++)
+      switch (op = *pc++)
         {
         case OP_NIL:
           vm_push ((value_t){ .type = TYPE_NIL });
@@ -947,35 +952,35 @@ run ()
           break;
         case OP_CONSTANT:
           {
-            value_t v = get_block ()->constants.values[*vm.pc++];
+            value_t v = get_block ()->constants.values[*pc++];
             printf ("%g\n", v.as.number);
             vm_push (v);
             break;
           }
         case OP_SET_GLOBAL:
           {
-            value_t v = get_block ()->constants.values[*vm.pc++];
+            value_t v = get_block ()->constants.values[*pc++];
             string_t *k = (string_t *)v.as.object;
             table_set (&vm.globals, k, vm_pop ());
             break;
           }
         case OP_GET_GLOBAL:
           {
-            value_t v = get_block ()->constants.values[*vm.pc++];
+            value_t v = get_block ()->constants.values[*pc++];
             string_t *k = (string_t *)v.as.object;
             vm_push (table_get (&vm.globals, k)->value);
             break;
           }
         case OP_SET_LOCAL:
           {
-            uint8_t offset = *vm.pc++;
-            vm.stack[offset] = vm_peek ();
+            uint8_t offset = *pc++;
+            stack[offset] = vm_peek ();
             break;
           }
         case OP_GET_LOCAL:
           {
-            uint8_t offset = *vm.pc++;
-            vm_push (vm.stack[offset]);
+            uint8_t offset = *pc++;
+            vm_push (stack[offset]);
             break;
           }
         case OP_NEG:
@@ -1048,29 +1053,29 @@ run ()
           }
         case OP_LOOP:
           {
-            vm.pc += 2;
-            uint16_t offset = (vm.pc[-2] << 8) | vm.pc[-1];
-            vm.pc -= offset;
+            pc += 2;
+            uint16_t offset = (pc[-2] << 8) | pc[-1];
+            pc -= offset;
             break;
           }
         case OP_JUMP:
           {
-            vm.pc += 2;
-            uint16_t offset = (vm.pc[-2] << 8) | vm.pc[-1];
-            vm.pc += offset;
+            pc += 2;
+            uint16_t offset = (pc[-2] << 8) | pc[-1];
+            pc += offset;
             break;
           }
         case OP_JUMP_IF_FALSE:
           {
-            vm.pc += 2;
-            uint16_t offset = (vm.pc[-2] << 8) | vm.pc[-1];
+            pc += 2;
+            uint16_t offset = (pc[-2] << 8) | pc[-1];
             if (!value_to_boolean (vm_peek ()))
-              vm.pc += offset;
+              pc += offset;
             break;
           }
         case OP_END_SCOPE:
           {
-            uint8_t n = *vm.pc++;
+            uint8_t n = *pc++;
             *(vm.top - n - 1) = vm_peek ();
             vm.top -= n;
             break;
@@ -1653,19 +1658,22 @@ compile_block (const char *source)
 result_t
 interpret (char *source)
 {
-  result_t result;
-
-  if (compile_block (source) == NULL)
+  function_t *f = compile_block (source);
+  if (f == NULL)
     return RESULT_COMPILE_ERROR;
+
+  vm_push ((value_t){ .type = TYPE_OBJECT, .as.object = (object_t *)f });
+
+  call_t *call = &vm.calls[vm.call_count++];
+  call->function = f;
+  call->pc = f->block.code;
+  call->slots = vm.stack;
 
 #ifdef DEBUG
   dbg_disassemble_all ();
 #endif
 
-  vm.pc = get_block ()->code;
-  result = run ();
-
-  return result;
+  return run ();
 };
 
 void
