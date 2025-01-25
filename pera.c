@@ -6,7 +6,8 @@
 #include <string.h>
 
 #define DEBUG
-#define STACK_SIZE 256
+#define FRAMES_MAX 64
+#define STACK_SIZE (FRAMES_MAX * 256)
 #define UINT8_OVER 256
 #define TABLE_LOAD 0.75
 
@@ -168,6 +169,15 @@ typedef struct
 
 typedef struct
 {
+  function_t *function;
+  uint8_t *pc;
+  value_t *slots;
+} call_t;
+
+typedef struct
+{
+  call_t calls[FRAMES_MAX];
+  int call_count;
   uint8_t *pc;
   value_t stack[STACK_SIZE];
   value_t *top;
@@ -672,6 +682,7 @@ vm_new ()
 {
   vm.top = vm.stack;
   vm.objects = NULL;
+  vm.call_count = 0;
   table_new (&vm.strings);
   table_new (&vm.globals);
 }
