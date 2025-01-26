@@ -1436,7 +1436,18 @@ parse_on_form (token_t token)
 
   name = next_token;
 
-  next_token = scan_token ();
+  while ((next_token = scan_token ()).type == TOKEN_WORD)
+    {
+      current->function->arity++;
+      if (current->function->arity > 255)
+        {
+          fprintf (stderr, "Functions cannot have >255 parameters\n");
+          return false;
+        }
+
+      // TODO
+    }
+
   if (next_token.type != TOKEN_RPAREN)
     {
       fprintf (stderr, "Expected ')' to end function declaration\n");
