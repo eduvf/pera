@@ -905,7 +905,7 @@ print_value (value_t v)
             if (f->name == NULL)
               printf ("<main>");
             else
-              printf ("<function %s>", f->name->chars);
+              printf ("<fn %s>", f->name->chars);
             break;
           }
         }
@@ -1462,7 +1462,7 @@ parse_on_form (token_t token)
   block_push_constant (
       (value_t){ .type = TYPE_OBJECT, .as.object = (object_t *)f },
       OP_CONSTANT);
-  emit_set_global (name);
+  emit_set_local (name);
 
   return true;
 }
