@@ -1342,7 +1342,7 @@ emit_get_global (token_t token)
 }
 
 bool
-emit_word (token_t token)
+emit_word (token_t token, bool is_first_word)
 {
   opcode_t op = is_token_op (token);
   if (op == OP_NOT_BUILTIN)
@@ -1352,7 +1352,8 @@ emit_word (token_t token)
       if (!found)
         return false;
 
-      block_push (OP_CALL);
+      if (is_first_word)
+        block_push (OP_CALL);
       return true;
     }
 
@@ -1681,14 +1682,14 @@ parse_expression (token_t token)
         if (!parse_multiple_expressions (token))
           return false;
 
-        if (!emit_word (first_token))
+        if (!emit_word (first_token, true))
           return false;
 
         return true;
       }
     case TOKEN_WORD:
       {
-        if (!emit_word (token))
+        if (!emit_word (token, false))
           return false;
         return true;
       }
