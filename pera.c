@@ -813,6 +813,9 @@ dbg_disassemble_operation (size_t offset)
     case OP_END_SCOPE:
       printf ("END SCOPE %d\n", block->code[offset + 1]);
       return 2;
+    case OP_CALL:
+      printf ("CALL\n");
+      return 2;
     case OP_RETURN:
       printf ("RETURN\n");
       return 1;
@@ -1086,10 +1089,17 @@ run ()
             vm.top -= n;
             break;
           }
+        case OP_CALL:
+          {
+            // TODO
+            pc++;
+            break;
+          }
         case OP_RETURN:
-          // print_value (pop (vm));
-          // printf ("\n");
-          return RESULT_OK;
+          {
+            // TODO
+            return RESULT_OK;
+          }
         }
     }
 }
@@ -1353,7 +1363,10 @@ emit_word (token_t token, bool is_first_word)
         return false;
 
       if (is_first_word)
-        block_push (OP_CALL);
+        {
+          block_push (OP_CALL);
+          block_push (0);
+        }
       return true;
     }
 
