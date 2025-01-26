@@ -1352,28 +1352,36 @@ emit_get_global (token_t token)
 }
 
 bool
-emit_word (token_t token, bool is_first_word)
+emit_word (token_t token)
+{
+  bool found = (*token.start == '_') ? emit_get_global (token)
+                                     : emit_get_local (token);
+
+#ifdef DEBUG
+  printf ("emit word '%.*s'\n", token.length, token.start);
+#endif
+  return found;
+}
+
+bool
+emit_op (token_t token)
 {
   opcode_t op = is_token_op (token);
   if (op == OP_NOT_BUILTIN)
     {
-      bool found = (*token.start == '_') ? emit_get_global (token)
-                                         : emit_get_local (token);
+      bool found = emit_word (token);
       if (!found)
         return false;
 
-      if (is_first_word)
-        {
-          block_push (OP_CALL);
-          block_push (0);
-        }
+      block_push (OP_CALL);
+      block_push (0);
       return true;
     }
 
   block_push (op);
 
 #ifdef DEBUG
-  printf ("emit byte '%.*s'\n", token.length, token.start);
+  printf ("emit op '%.*s'\n", token.length, token.start);
 #endif
   return true;
 }
@@ -1695,14 +1703,14 @@ parse_expression (token_t token)
         if (!parse_multiple_expressions (token))
           return false;
 
-        if (!emit_word (first_token, true))
+        if (!emit_op (first_token))
           return false;
 
         return true;
       }
     case TOKEN_WORD:
       {
-        if (!emit_word (token, false))
+        if (!emit_word (token))
           return false;
         return true;
       }
