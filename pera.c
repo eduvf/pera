@@ -1407,6 +1407,46 @@ parse_do_form (token_t token)
 }
 
 bool
+parse_on_form (token_t token)
+{
+  token_t next_token = scan_token ();
+  token_t name;
+
+  if (next_token.type != TOKEN_LPAREN)
+    {
+      fprintf (stderr, "Expected '(' to begin function declaration\n");
+      return false;
+    }
+
+  next_token = scan_token ();
+  if (next_token.type != TOKEN_WORD)
+    {
+      fprintf (stderr, "Expected name within function declaration\n");
+      return false;
+    }
+
+  name = next_token;
+
+  next_token = scan_token ();
+  if (next_token.type != TOKEN_RPAREN)
+    {
+      fprintf (stderr, "Expected ')' to end function declaration\n");
+      return false;
+    }
+
+  parse_multiple_expressions (next_token);
+
+  function_t *f = current->function;
+
+  block_push (OP_RETURN);
+  block_push_constant (
+      (value_t){ .type = TYPE_OBJECT, .as.object = (object_t *)f },
+      OP_CONSTANT);
+
+  return true;
+}
+
+bool
 parse_put_form ()
 {
   token_t key = scan_token ();
@@ -1593,6 +1633,9 @@ parse_expression (token_t token)
 
         if (is_token_string (first_token, "do"))
           return parse_do_form (token);
+
+        if (is_token_string (first_token, "on"))
+          return parse_on_form (token);
 
         if (is_token_string (first_token, "put"))
           return parse_put_form ();
