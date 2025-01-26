@@ -158,8 +158,9 @@ typedef struct
   int depth;
 } local_t;
 
-typedef struct
+typedef struct compiler
 {
+  struct compiler *outer;
   function_t *function;
   function_type_t type;
   local_t locals[UINT8_OVER];
@@ -626,10 +627,11 @@ gc_free_all ()
 /* COMPILER FUNCTIONS */
 
 void
-compiler_new (compiler_t *compiler)
+compiler_new (compiler_t *compiler, function_type_t type)
 {
+  compiler->outer = current;
   compiler->function = function_new ();
-  compiler->type = FUNCTION_TOP_LEVEL;
+  compiler->type = type;
   compiler->local_count = 0;
   compiler->scope_depth = 0;
 
@@ -641,10 +643,14 @@ compiler_new (compiler_t *compiler)
   current = compiler;
 }
 
-void
-compiler_free (compiler_t *compiler)
+function_t *
+compiler_end ()
 {
-  function_free (compiler->function);
+  block_push (OP_RETURN);
+
+  function_t *f = current->function;
+  current = current->outer;
+  return f;
 }
 
 void
@@ -697,8 +703,7 @@ vm_free ()
 void
 vm_reset ()
 {
-  compiler_free (current);
-  compiler_new (current);
+  current->function->block.length = 0;
   vm.objects = NULL;
   vm.top = vm.stack;
 }
@@ -1412,6 +1417,10 @@ parse_on_form (token_t token)
   token_t next_token = scan_token ();
   token_t name;
 
+  compiler_t compiler;
+  compiler_new (&compiler, FUNCTION_USER_DEFINED);
+  compiler_scope_create ();
+
   if (next_token.type != TOKEN_LPAREN)
     {
       fprintf (stderr, "Expected '(' to begin function declaration\n");
@@ -1436,12 +1445,13 @@ parse_on_form (token_t token)
 
   parse_multiple_expressions (next_token);
 
-  function_t *f = current->function;
+  function_t *f = compiler_end ();
+  f->name = string_copy ((char *)name.start, name.length);
 
-  block_push (OP_RETURN);
   block_push_constant (
       (value_t){ .type = TYPE_OBJECT, .as.object = (object_t *)f },
       OP_CONSTANT);
+  emit_set_global (name);
 
   return true;
 }
@@ -1812,7 +1822,7 @@ main (int argc, const char *argv[])
   compiler_t compiler;
 
   vm_new ();
-  compiler_new (&compiler);
+  compiler_new (&compiler, FUNCTION_TOP_LEVEL);
 
   init_message ();
   if (argc == 1)
@@ -1825,7 +1835,6 @@ main (int argc, const char *argv[])
       exit (1);
     }
 
-  compiler_free (&compiler);
   vm_free ();
   return 0;
 }
