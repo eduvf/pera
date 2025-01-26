@@ -118,8 +118,9 @@ typedef enum
   OP_JUMP,
   OP_JUMP_IF_FALSE,
   OP_END_SCOPE,
+  OP_CALL,
   OP_RETURN,
-  OP_ERROR,
+  OP_NOT_BUILTIN,
 } opcode_t;
 
 typedef enum
@@ -1253,7 +1254,7 @@ is_token_op (token_t token)
   if (is_token_string (token, "false"))
     return OP_FALSE;
 
-  return OP_ERROR;
+  return OP_NOT_BUILTIN;
 }
 
 void
@@ -1300,48 +1301,58 @@ find_local (token_t *token)
   return -1;
 }
 
-void
+bool
 emit_get_local (token_t token)
 {
   int n = find_local (&token);
   if (n == -1)
     {
       fprintf (stderr, "Couldn't find '%.*s'\n", token.length, token.start);
-      return;
+      return false;
     }
 
   block_push (OP_GET_LOCAL);
   block_push (n);
+  return true;
 }
 
 void
 emit_set_global (token_t token)
 {
-  value_t k = { .type = TYPE_OBJECT,
-                .as.object = (object_t *)string_copy ((char *)token.start,
-                                                      token.length) };
+  string_t *s = string_copy ((char *)token.start, token.length);
+  value_t k = { .type = TYPE_OBJECT, .as.object = (object_t *)s };
   block_push_constant (k, OP_SET_GLOBAL);
 }
 
-void
+bool
 emit_get_global (token_t token)
 {
-  value_t k = { .type = TYPE_OBJECT,
-                .as.object = (object_t *)string_copy ((char *)token.start,
-                                                      token.length) };
+  string_t *s = string_copy ((char *)token.start, token.length);
+  value_t k = { .type = TYPE_OBJECT, .as.object = (object_t *)s };
+
+  pair_t *p = table_get (&vm.globals, s);
+  if (p->key == NULL)
+    {
+      fprintf (stderr, "Couldn't find '%.*s'\n", token.length, token.start);
+      return false;
+    }
+
   block_push_constant (k, OP_GET_GLOBAL);
+  return true;
 }
 
 bool
 emit_word (token_t token)
 {
   opcode_t op = is_token_op (token);
-  if (op == OP_ERROR)
+  if (op == OP_NOT_BUILTIN)
     {
-      if (*token.start == '_')
-        emit_get_global (token);
-      else
-        emit_get_local (token);
+      bool found = (*token.start == '_') ? emit_get_global (token)
+                                         : emit_get_local (token);
+      if (!found)
+        return false;
+
+      block_push (OP_CALL);
       return true;
     }
 
