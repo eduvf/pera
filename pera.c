@@ -836,6 +836,20 @@ dbg_disassemble_all ()
     }
 }
 
+void print_value (value_t v);
+
+void
+dbg_print_stack ()
+{
+  for (value_t *v = vm.stack; v < vm.top; v++)
+    {
+      printf ("[");
+      print_value (*v);
+      printf ("]");
+    }
+  printf ("\n");
+}
+
 /* INTERPRET */
 
 value_t
@@ -937,13 +951,7 @@ run ()
   while (1)
     {
 #ifdef DEBUG
-      for (value_t *v = vm.stack; v < vm.top; v++)
-        {
-          printf ("[");
-          print_value (*v);
-          printf ("]");
-        }
-      printf ("\n");
+      dbg_print_stack ();
       dbg_disassemble_operation ((int)(call->pc - get_block ()->code));
 #endif
 
