@@ -1364,7 +1364,7 @@ emit_word (token_t token)
 }
 
 bool
-emit_op (token_t token)
+emit_op (token_t token, int arg_num)
 {
   opcode_t op = is_token_op (token);
   if (op == OP_NOT_BUILTIN)
@@ -1373,8 +1373,14 @@ emit_op (token_t token)
       if (!found)
         return false;
 
+      if (arg_num > 255)
+        {
+          fprintf (stderr, "Functions cannot have >255 parameters\n");
+          return false;
+        }
+
       block_push (OP_CALL);
-      block_push (0);
+      block_push (arg_num);
       return true;
     }
 
@@ -1411,7 +1417,7 @@ emit_string (token_t token)
 bool parse_expression (token_t token);
 
 bool
-parse_multiple_expressions (token_t token)
+parse_multiple_expressions (token_t token, int *counter)
 {
   do
     {
@@ -1420,6 +1426,7 @@ parse_multiple_expressions (token_t token)
         break;
       if (!parse_expression (token))
         return false;
+      counter++;
     }
   while (1);
 
@@ -1435,9 +1442,10 @@ parse_multiple_expressions (token_t token)
 bool
 parse_do_form (token_t token)
 {
+  int arg_num = 0;
   compiler_scope_create ();
 
-  if (!parse_multiple_expressions (token))
+  if (!parse_multiple_expressions (token, &arg_num))
     return false;
 
   compiler_scope_delete ();
@@ -1449,6 +1457,7 @@ parse_on_form (token_t token)
 {
   token_t next_token = scan_token ();
   token_t name;
+  int body_expr_num;
 
   compiler_t compiler;
   compiler_new (&compiler, FUNCTION_USER_DEFINED);
@@ -1487,7 +1496,7 @@ parse_on_form (token_t token)
       return false;
     }
 
-  parse_multiple_expressions (next_token);
+  parse_multiple_expressions (next_token, &body_expr_num);
 
   function_t *f = compiler_end ();
   f->name = string_copy ((char *)name.start, name.length);
@@ -1669,6 +1678,7 @@ parse_expression (token_t token)
     case TOKEN_LPAREN:
       {
         token_t first_token = scan_token ();
+        int arg_num = 0;
 
         if (first_token.type == TOKEN_RPAREN)
           return true;
@@ -1700,10 +1710,10 @@ parse_expression (token_t token)
         if (is_token_string (first_token, "while"))
           return parse_while_form ();
 
-        if (!parse_multiple_expressions (token))
+        if (!parse_multiple_expressions (token, &arg_num))
           return false;
 
-        if (!emit_op (first_token))
+        if (!emit_op (first_token, arg_num))
           return false;
 
         return true;
