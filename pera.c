@@ -1453,7 +1453,7 @@ parse_do_form (token_t token)
 }
 
 bool
-parse_on_form (token_t token)
+parse_on_form ()
 {
   token_t next_token = scan_token ();
   token_t name;
@@ -1699,7 +1699,7 @@ parse_expression (token_t token)
           return parse_do_form (token);
 
         if (is_token_string (first_token, "on"))
-          return parse_on_form (token);
+          return parse_on_form ();
 
         if (is_token_string (first_token, "put"))
           return parse_put_form ();
