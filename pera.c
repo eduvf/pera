@@ -932,8 +932,6 @@ result_t
 run ()
 {
   call_t *call = &vm.calls[vm.call_count - 1];
-  value_t *stack = call->slots;
-  uint8_t *pc = call->pc;
   uint8_t op;
 
   while (1)
@@ -946,9 +944,10 @@ run ()
           printf ("]");
         }
       printf ("\n");
-      dbg_disassemble_operation ((int)(pc - get_block ()->code));
+      dbg_disassemble_operation ((int)(call->pc - get_block ()->code));
 #endif
-      switch (op = *pc++)
+
+      switch (op = *call->pc++)
         {
         case OP_NIL:
           vm_push ((value_t){ .type = TYPE_NIL });
@@ -961,35 +960,35 @@ run ()
           break;
         case OP_CONSTANT:
           {
-            value_t v = get_block ()->constants.values[*pc++];
+            value_t v = get_block ()->constants.values[*call->pc++];
             printf ("%g\n", v.as.number);
             vm_push (v);
             break;
           }
         case OP_SET_GLOBAL:
           {
-            value_t v = get_block ()->constants.values[*pc++];
+            value_t v = get_block ()->constants.values[*call->pc++];
             string_t *k = (string_t *)v.as.object;
             table_set (&vm.globals, k, vm_pop ());
             break;
           }
         case OP_GET_GLOBAL:
           {
-            value_t v = get_block ()->constants.values[*pc++];
+            value_t v = get_block ()->constants.values[*call->pc++];
             string_t *k = (string_t *)v.as.object;
             vm_push (table_get (&vm.globals, k)->value);
             break;
           }
         case OP_SET_LOCAL:
           {
-            uint8_t offset = *pc++;
-            stack[offset] = vm_peek ();
+            uint8_t offset = *call->pc++;
+            call->slots[offset] = vm_peek ();
             break;
           }
         case OP_GET_LOCAL:
           {
-            uint8_t offset = *pc++;
-            vm_push (stack[offset]);
+            uint8_t offset = *call->pc++;
+            vm_push (call->slots[offset]);
             break;
           }
         case OP_NEG:
@@ -1062,29 +1061,29 @@ run ()
           }
         case OP_LOOP:
           {
-            pc += 2;
-            uint16_t offset = (pc[-2] << 8) | pc[-1];
-            pc -= offset;
+            call->pc += 2;
+            uint16_t offset = (call->pc[-2] << 8) | call->pc[-1];
+            call->pc -= offset;
             break;
           }
         case OP_JUMP:
           {
-            pc += 2;
-            uint16_t offset = (pc[-2] << 8) | pc[-1];
-            pc += offset;
+            call->pc += 2;
+            uint16_t offset = (call->pc[-2] << 8) | call->pc[-1];
+            call->pc += offset;
             break;
           }
         case OP_JUMP_IF_FALSE:
           {
-            pc += 2;
-            uint16_t offset = (pc[-2] << 8) | pc[-1];
+            call->pc += 2;
+            uint16_t offset = (call->pc[-2] << 8) | call->pc[-1];
             if (!value_to_boolean (vm_peek ()))
-              pc += offset;
+              call->pc += offset;
             break;
           }
         case OP_END_SCOPE:
           {
-            uint8_t n = *pc++;
+            uint8_t n = *call->pc++;
             *(vm.top - n - 1) = vm_peek ();
             vm.top -= n;
             break;
