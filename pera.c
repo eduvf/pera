@@ -1268,6 +1268,17 @@ is_token_op (token_t token)
 }
 
 void
+emit_set_local_new (token_t token)
+{
+  local_t *local = &current->locals[current->local_count++];
+  local->name = token;
+  local->depth = current->scope_depth;
+
+  block_push (OP_SET_LOCAL);
+  block_push (current->local_count - 1);
+}
+
+void
 emit_set_local (token_t token)
 {
   if (current->local_count == UINT8_OVER)
@@ -1291,12 +1302,7 @@ emit_set_local (token_t token)
         }
     }
 
-  local_t *local = &current->locals[current->local_count++];
-  local->name = token;
-  local->depth = current->scope_depth;
-
-  block_push (OP_SET_LOCAL);
-  block_push (current->local_count - 1);
+  emit_set_local_new (token);
 }
 
 int
