@@ -931,6 +931,38 @@ print_value (value_t v)
     }
 }
 
+bool
+call_function (value_t callee, int arg_num)
+{
+  if (callee.type != TYPE_OBJECT || callee.as.object->type != OBJECT_FUNCTION)
+    {
+      printf ("Can't call '");
+      print_value (callee);
+      printf ("' because it's not a function\n");
+      return false;
+    }
+
+  call_t *call = &vm.calls[vm.call_count++];
+  function_t *fn = (function_t *)callee.as.object;
+  call->function = fn;
+  call->pc = fn->block.code;
+  call->slots = vm.top - arg_num - 1;
+
+  if (fn->arity != arg_num)
+    {
+      fprintf (stderr, "Expected %d arguments, got %d\n", fn->arity, arg_num);
+      return false;
+    }
+
+  if (vm.call_count == FRAMES_MAX)
+    {
+      fprintf (stderr, "Stack overflow\n");
+      return false;
+    }
+
+  return true;
+}
+
 #define BINARY_OP(o)                                                          \
   do                                                                          \
     {                                                                         \
@@ -1098,14 +1130,23 @@ run ()
           }
         case OP_CALL:
           {
-            // TODO
-            pc++;
+            uint8_t arg_num = *call->pc++;
+            if (!call_function (vm_pop (), arg_num))
+              return RESULT_RUNTIME_ERROR;
+            call = &vm.calls[vm.call_count - 1];
             break;
           }
         case OP_RETURN:
           {
-            // TODO
-            return RESULT_OK;
+            value_t v = vm_pop ();
+            vm.call_count--;
+            if (vm.call_count == 0)
+              return RESULT_OK;
+
+            vm.top = call->slots;
+            vm_push (v);
+            call = &vm.calls[vm.call_count - 1];
+            break;
           }
         }
     }
@@ -1275,14 +1316,11 @@ is_token_op (token_t token)
 }
 
 void
-emit_set_local_new (token_t token)
+local_set_new (token_t token)
 {
   local_t *local = &current->locals[current->local_count++];
   local->name = token;
   local->depth = current->scope_depth;
-
-  block_push (OP_SET_LOCAL);
-  block_push (current->local_count - 1);
 }
 
 void
@@ -1309,7 +1347,9 @@ emit_set_local (token_t token)
         }
     }
 
-  emit_set_local_new (token);
+  local_set_new (token);
+  block_push (OP_SET_LOCAL);
+  block_push (current->local_count - 1);
 }
 
 int
@@ -1500,7 +1540,7 @@ parse_on_form ()
           return false;
         }
 
-      // TODO
+      local_set_new (next_token);
     }
 
   if (next_token.type != TOKEN_RPAREN)
