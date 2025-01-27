@@ -1426,7 +1426,7 @@ parse_multiple_expressions (token_t token, int *counter)
         break;
       if (!parse_expression (token))
         return false;
-      counter++;
+      (*counter)++;
     }
   while (1);
 
