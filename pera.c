@@ -125,6 +125,7 @@ typedef enum
   OP_JUMP,
   OP_JUMP_IF_FALSE,
   OP_END_SCOPE,
+  OP_CLOSURE,
   OP_CALL,
   OP_RETURN,
   OP_NOT_BUILTIN,
@@ -844,6 +845,9 @@ dbg_disassemble_operation (size_t offset)
     case OP_END_SCOPE:
       printf ("END SCOPE %d\n", block->code[offset + 1]);
       return 2;
+    case OP_CLOSURE:
+      printf ("CLOSURE %d\n", block->code[offset + 1]);
+      return 2;
     case OP_CALL:
       printf ("CALL\n");
       return 2;
@@ -1165,6 +1169,15 @@ run ()
             uint8_t n = *call->pc++;
             *(vm.top - n - 1) = vm_peek ();
             vm.top -= n;
+            break;
+          }
+        case OP_CLOSURE:
+          {
+            value_t v = get_block ()->constants.values[*call->pc++];
+            function_t *f = (function_t *)v.as.object;
+            closure_t *c = closure_new (f);
+            object_t *o = (object_t *)c;
+            vm_push ((value_t){ .type = TYPE_OBJECT, .as.object = o });
             break;
           }
         case OP_CALL:
