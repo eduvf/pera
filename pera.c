@@ -23,6 +23,7 @@ typedef enum
 {
   OBJECT_STRING,
   OBJECT_FUNCTION,
+  OBJECT_CLOSURE,
 } object_type_t;
 
 typedef struct object
@@ -78,6 +79,12 @@ typedef struct
   block_t block;
   string_t *name;
 } function_t;
+
+typedef struct
+{
+  object_t object;
+  function_t *function;
+} closure_t;
 
 typedef struct
 {
@@ -495,6 +502,8 @@ object_sizeof (object_type_t type)
       return sizeof (string_t);
     case OBJECT_FUNCTION:
       return sizeof (function_t);
+    case OBJECT_CLOSURE:
+      return sizeof (closure_t);
     }
 }
 
@@ -591,6 +600,22 @@ function_new ()
   return f;
 }
 
+/* CLOSURE FUNCTIONS */
+
+closure_t *
+closure_new (function_t *function)
+{
+  closure_t *closure = (closure_t *)object_new (OBJECT_CLOSURE);
+  closure->function = function;
+  return closure;
+}
+
+void
+closure_free (closure_t *closure)
+{
+  free (closure);
+}
+
 /* GC FUNCTIONS */
 
 void
@@ -608,6 +633,12 @@ gc_free_object (object_t *object)
       {
         function_t *function = (function_t *)object;
         function_free (function);
+        break;
+      }
+    case OBJECT_CLOSURE:
+      {
+        closure_t *closure = (closure_t *)object;
+        closure_free (closure);
         break;
       }
     }
@@ -924,6 +955,14 @@ print_value (value_t v)
               printf ("<main>");
             else
               printf ("<fn %s>", f->name->chars);
+            break;
+          }
+        case OBJECT_CLOSURE:
+          {
+            closure_t *c = (closure_t *)v.as.object;
+            value_t cf = (value_t){ .type = TYPE_OBJECT,
+                                    .as.object = (object_t *)c->function };
+            print_value (cf);
             break;
           }
         }
