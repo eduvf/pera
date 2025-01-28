@@ -179,7 +179,7 @@ typedef struct compiler
 
 typedef struct
 {
-  function_t *function;
+  closure_t *closure;
   uint8_t *pc;
   value_t *slots;
 } call_t;
@@ -975,9 +975,9 @@ print_value (value_t v)
 }
 
 bool
-call_function (value_t callee, int arg_num)
+call_value (value_t callee, int arg_num)
 {
-  if (callee.type != TYPE_OBJECT || callee.as.object->type != OBJECT_FUNCTION)
+  if (callee.type != TYPE_OBJECT || callee.as.object->type != OBJECT_CLOSURE)
     {
       printf ("Can't call '");
       print_value (callee);
@@ -986,14 +986,15 @@ call_function (value_t callee, int arg_num)
     }
 
   call_t *call = &vm.calls[vm.call_count++];
-  function_t *fn = (function_t *)callee.as.object;
-  call->function = fn;
-  call->pc = fn->block.code;
+  closure_t *c = (closure_t *)callee.as.object;
+  int arity = c->function->arity;
+  call->closure = c;
+  call->pc = c->function->block.code;
   call->slots = vm.top - arg_num - 1;
 
-  if (fn->arity != arg_num)
+  if (arity != arg_num)
     {
-      fprintf (stderr, "Expected %d arguments, got %d\n", fn->arity, arg_num);
+      fprintf (stderr, "Expected %d arguments, got %d\n", arity, arg_num);
       return false;
     }
 
@@ -1183,7 +1184,7 @@ run ()
         case OP_CALL:
           {
             uint8_t arg_num = *call->pc++;
-            if (!call_function (vm_pop (), arg_num))
+            if (!call_value (vm_pop (), arg_num))
               return RESULT_RUNTIME_ERROR;
             call = &vm.calls[vm.call_count - 1];
             break;
@@ -1606,9 +1607,8 @@ parse_on_form ()
   function_t *f = compiler_end ();
   f->name = string_copy ((char *)name.start, name.length);
 
-  block_push_constant (
-      (value_t){ .type = TYPE_OBJECT, .as.object = (object_t *)f },
-      OP_CONSTANT);
+  value_t v = { .type = TYPE_OBJECT, .as.object = (object_t *)f };
+  block_push_constant (v, OP_CLOSURE);
   emit_set_local (name);
 
   return true;
@@ -1874,11 +1874,12 @@ interpret (char *source)
   if (f == NULL)
     return RESULT_COMPILE_ERROR;
 
-  vm_push ((value_t){ .type = TYPE_OBJECT, .as.object = (object_t *)f });
+  closure_t *c = closure_new (f);
+  vm_push ((value_t){ .type = TYPE_OBJECT, .as.object = (object_t *)c });
 
   call_t *call = &vm.calls[vm.call_count++];
-  call->function = f;
-  call->pc = f->block.code;
+  call->closure = c;
+  call->pc = c->function->block.code;
   call->slots = vm.stack;
 
 #ifdef DEBUG
